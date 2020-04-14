@@ -1,4 +1,11 @@
 # rpc-transport-tests
 Basic testing for RPC frameworks
 
-Testing
+# Dependencies
+
+Need to install:
++ cmake
++ folly
+* grpc
+* protobuf
+* rsockets-cpp
