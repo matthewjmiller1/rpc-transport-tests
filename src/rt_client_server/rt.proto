@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package rpc_tranports;
+
+message RtData {
+  uint64 req_timestamp = 1;
+  bytes data = 2;
+}
