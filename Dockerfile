@@ -34,6 +34,7 @@ RUN apt-get update && \
     tcpdump \
     netcat \
     nmap \
+    strace \
     git-all
 
 SHELL ["/bin/bash", "-c"]
@@ -49,6 +50,7 @@ RUN git clone --recurse-submodules -b $GRPC_VERSION https://github.com/grpc/grpc
 RUN git clone https://github.com/fmtlib/fmt.git
 RUN git clone https://github.com/facebook/folly.git
 RUN git clone https://github.com/rsocket/rsocket-cpp.git
+RUN git clone https://github.com/google/glog.git
 
 # Build/install grpc and all its dependencies based on:
 # https://grpc.io/docs/quickstart/cpp/
@@ -74,16 +76,6 @@ RUN cmake -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR ..
 RUN make -j $(nproc)
 RUN make install
 
-# Build/install rsocket-cpp based on:
-# https://github.com/rsocket/rsocket-cpp
-WORKDIR /git_repos/rsocket-cpp/build
-RUN cmake -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR ..
-RUN make -j $(nproc)
-RUN make install
-
-# TODO: move earlier
-WORKDIR /git_repos
-RUN git clone https://github.com/google/glog.git
 # Build/install glog required by rsocket-cpp based on:
 # https://github.com/google/glog/blob/master/cmake/INSTALL.md
 WORKDIR /git_repos/glog
@@ -91,9 +83,12 @@ RUN cmake -H. -Bbuild -G "Unix Makefiles"
 RUN cmake -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR --build build
 RUN cmake --build build --target install
 
-# TODO move to top
-RUN apt-get -y install \
-    strace
+# Build/install rsocket-cpp based on:
+# https://github.com/rsocket/rsocket-cpp
+WORKDIR /git_repos/rsocket-cpp/build
+RUN cmake -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR ..
+RUN make -j $(nproc)
+RUN make install
 
 RUN mkdir -p /rpc_transport/bin
 RUN mkdir -p /rpc_transport/rt_client_server
