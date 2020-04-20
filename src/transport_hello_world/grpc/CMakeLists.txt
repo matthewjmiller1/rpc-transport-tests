@@ -5,14 +5,21 @@ cmake_minimum_required(VERSION 3.17)
 project(grpc_hello_world)
 
 find_package(Protobuf REQUIRED)
+
 find_package(gRPC REQUIRED)
+message(STATUS "Using gRPC ${gRPC_VERSION}")
+
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # gRPC C++ plugin
-get_target_property(GRPC_CPP_PLUGIN_EXECUTABLE gRPC::grpc_cpp_plugin
-  IMPORTED_LOCATION_RELEASE)
+#get_target_property(GRPC_CPP_PLUGIN_EXECUTABLE gRPC::grpc_cpp_plugin
+#  IMPORTED_LOCATION_RELEASE)
+find_program(GRPC_CPP_PLUGIN_EXECUTABLE NAMES grpc_cpp_plugin)
+message(STATUS "Using gRPC plugin ${GRPC_CPP_PLUGIN_EXECUTABLE}")
+set(FOO gRPC::grpc++)
+message(STATUS "FOO ${FOO}")
 
 # Proto file
 set(PROTO_BASE "helloworld")
