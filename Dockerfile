@@ -119,6 +119,10 @@ RUN cmake ../..
 RUN make -j $(nproc)
 RUN cp rt_{client,server} /rpc_transport/bin/
 
+# Set clang to the default compiler for development
+ENV CC=/usr/bin/clang
+ENV CXX=/usr/bin/clang++
+
 WORKDIR /
 
 CMD ["/bin/bash"]
