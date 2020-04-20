@@ -35,7 +35,8 @@ RUN apt-get update && \
     netcat \
     nmap \
     strace \
-    git-all
+    git-all \
+    && rm -rf /var/lib/apt/lists/*
 
 SHELL ["/bin/bash", "-c"]
 
