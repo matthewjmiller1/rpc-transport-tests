@@ -18,8 +18,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 #  IMPORTED_LOCATION_RELEASE)
 find_program(GRPC_CPP_PLUGIN_EXECUTABLE NAMES grpc_cpp_plugin)
 message(STATUS "Using gRPC plugin ${GRPC_CPP_PLUGIN_EXECUTABLE}")
-set(FOO gRPC::grpc++)
-message(STATUS "FOO ${FOO}")
 
 # Proto file
 set(PROTO_BASE "helloworld")
