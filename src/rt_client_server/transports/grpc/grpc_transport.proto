@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package grpc_transport;
+
+service Service {
+  rpc ReqReply(stream Msg) returns (stream Msg);
+}
+
+message Msg {
+  bytes data = 1;
+}

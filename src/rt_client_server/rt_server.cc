@@ -1,4 +1,5 @@
 #include <transports/null/null_transport.hpp>
+#include <transports/grpc/grpc_transport.hpp>
 
 #include <memory>
 #include <iostream>
@@ -24,6 +25,9 @@ main(int argc, char **argv)
 
     if (FLAGS_transport.find("null") != std::string::npos) {
         transport = std::make_unique<rt::NullServer>(addr, FLAGS_port,
+                                                     ServerRcvFn);
+    } else if (FLAGS_transport.find("grpc") != std::string::npos) {
+        transport = std::make_unique<rt::GrpcServer>(addr, FLAGS_port,
                                                      ServerRcvFn);
     } else {
         std::cerr << "Unknown transport: " << FLAGS_transport << std::endl;

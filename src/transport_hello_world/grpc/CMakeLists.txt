@@ -9,7 +9,6 @@ find_package(Protobuf REQUIRED)
 find_package(gRPC REQUIRED)
 message(STATUS "Using gRPC ${gRPC_VERSION}")
 
-
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
@@ -33,7 +32,7 @@ add_custom_command(
   COMMAND protobuf::protoc
   ARGS --grpc_out "${CMAKE_CURRENT_BINARY_DIR}" -I "${PROTO_PATH}"
     --plugin=protoc-gen-grpc="${GRPC_CPP_PLUGIN_EXECUTABLE}" "${PROTO_FILE}"
-  DEPENDS "${hPROTO_FILE}")
+  DEPENDS "${PROTO_FILE}")
 
 # Generated include directory
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
@@ -42,7 +41,8 @@ include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 foreach(_target
   greeter_client greeter_server
   greeter_async_client greeter_async_client2 greeter_async_server)
-  add_executable(${_target} "${_target}.cc" ${PROTO_SRCS} ${GRPC_SRCS})
+  add_executable(${_target} "${_target}.cc" ${PROTO_SRCS}
+    ${PROTO_HDRS} ${GRPC_SRCS} ${GRPC_HDRS})
   target_link_libraries(${_target} ${Protobuf_LIBRARIES}
     gRPC::grpc++ gRPC::grpc++_reflection)
 endforeach()
