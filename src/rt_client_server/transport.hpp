@@ -16,9 +16,10 @@ namespace rt {
         std::vector<DataBuf> _bufs;
     };
 
+    typedef std::function<void(const Msg&, Msg&)> RcvFn;
+
     struct Server {
-        explicit Server(std::string address, uint16_t port,
-                        std::function<void(const Msg&, Msg&)> rcvFn);
+        explicit Server(std::string address, uint16_t port, RcvFn rcvFn);
 
         virtual ~Server() = default;
 
@@ -28,6 +29,6 @@ namespace rt {
 
         const std::string _address;
         const uint16_t _port;
-        const std::function<void(const Msg&, Msg&)> _rcvFn;
+        const RcvFn _rcvFn;
     };
 }

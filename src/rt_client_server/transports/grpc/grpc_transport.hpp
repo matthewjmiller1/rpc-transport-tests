@@ -20,10 +20,14 @@ struct GrpcServer final : public Server {
 
     void wait() override;
 
+    static RcvFn getRcvFn();
+
 private:
 
     std::unique_ptr<grpc::Server> _server;
     ReqReplyServiceImpl _service;
+
+    static RcvFn _globalRcvFn;
 };
 
 }
