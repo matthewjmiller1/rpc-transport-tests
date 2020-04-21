@@ -35,6 +35,7 @@ RUN apt-get update && \
     netcat \
     nmap \
     strace \
+    gdb \
     git-all \
     && rm -rf /var/lib/apt/lists/*
 
