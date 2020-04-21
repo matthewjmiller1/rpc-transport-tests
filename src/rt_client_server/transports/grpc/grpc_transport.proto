@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package grpc_transport;
 
-service Service {
+service ReqReplyService {
   rpc ReqReply(stream Msg) returns (stream Msg);
 }
 

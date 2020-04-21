@@ -1,18 +1,29 @@
 #pragma once
 
 #include <transport.hpp>
-//#include "grpc_transport.grpc.pb.h"
+#include <grpcpp/grpcpp.h>
+#include <grpc_transport.grpc.pb.h>
 
 namespace rt {
 
-    struct GrpcServer final : public Server {
-        explicit GrpcServer(std::string address, uint16_t port,
-                            std::function<void(const Msg&, Msg&)> rcvFn);
+struct ReqReplyServiceImpl final :
+    public grpc_transport::ReqReplyService::Service {
 
-        void wait() override;
+    grpc::Status ReqReply(grpc::ServerContext *context,
+        grpc::ServerReaderWriter<grpc_transport::Msg,
+                                 grpc_transport::Msg> *stream) override;
+};
 
-    private:
+struct GrpcServer final : public Server {
+    explicit GrpcServer(std::string address, uint16_t port,
+                        std::function<void(const Msg&, Msg&)> rcvFn);
 
-        //grpc_transport::ServiceImpl _service;
-    };
+    void wait() override;
+
+private:
+
+    std::unique_ptr<grpc::Server> _server;
+    ReqReplyServiceImpl _service;
+};
+
 }
