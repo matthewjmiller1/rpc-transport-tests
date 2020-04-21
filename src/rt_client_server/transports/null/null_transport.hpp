@@ -4,10 +4,11 @@
 
 namespace rt {
 
-    struct NullServer final : public Server {
-        explicit NullServer(std::string address, uint16_t port,
-                            std::function<void(const Msg&, Msg&)> rcvFn);
+struct NullServer final : public Server {
+    explicit NullServer(std::string address, uint16_t port,
+                        std::function<void(const Msg&, Msg&)> rcvFn);
 
-        void wait() override;
-    };
+    void wait() override;
+};
+
 }
