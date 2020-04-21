@@ -47,6 +47,10 @@ GrpcServer::GrpcServer(std::string address, uint16_t port,
     Server(address, port, rcvFn)
 {
     const auto portStr = std::to_string(port);
+    if (address == "::") {
+        // grpc format for wildcard listener
+        address = "[::]";
+    }
     const auto serverAddress = address + ":" + portStr;
     grpc::ServerBuilder builder;
 
@@ -57,6 +61,11 @@ GrpcServer::GrpcServer(std::string address, uint16_t port,
                              grpc::InsecureServerCredentials());
 
     builder.RegisterService(&_service);
+
+    _server = builder.BuildAndStart();
+    if (nullptr == _server) {
+        throw std::invalid_argument("server was not created");
+    }
 }
 
 void
