@@ -11,4 +11,10 @@ struct NullServer final : public Server {
     void wait() override;
 };
 
+struct NullClient final : public Client {
+    explicit NullClient(std::string serverAddress, uint16_t serverPort);
+
+    void sendReq(const Msg &request, Msg &reply) override;
+};
+
 }

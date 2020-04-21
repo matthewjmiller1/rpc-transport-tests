@@ -7,4 +7,7 @@ Server::Server(std::string address, uint16_t port,
                std::function<void(const Msg&, Msg&)> rcvFn) :
     _address(address), _port(port), _rcvFn(rcvFn) {}
 
+Client::Client(std::string serverAddress, uint16_t serverPort) :
+    _serverAddress(serverAddress), _serverPort(serverPort) {}
+
 }

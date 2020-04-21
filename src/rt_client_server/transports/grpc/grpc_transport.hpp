@@ -30,4 +30,10 @@ private:
     static RcvFn _globalRcvFn;
 };
 
+struct GrpcClient final : public Client {
+    explicit GrpcClient(std::string serverAddress, uint16_t serverPort);
+
+    void sendReq(const Msg &request, Msg &reply) override;
+};
+
 }

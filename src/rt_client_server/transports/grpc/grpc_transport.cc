@@ -74,4 +74,14 @@ GrpcServer::wait()
     _server->Wait();
 }
 
+GrpcClient::GrpcClient(std::string serverAddress, uint16_t serverPort) :
+    Client(serverAddress, serverPort)
+{
+}
+
+void
+GrpcClient::sendReq(const Msg &request, Msg &reply)
+{
+}
+
 }

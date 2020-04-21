@@ -12,4 +12,14 @@ NullServer::wait()
 {
 }
 
+NullClient::NullClient(std::string serverAddress, uint16_t serverPort) :
+    Client(serverAddress, serverPort)
+{
+}
+
+void
+NullClient::sendReq(const Msg &request, Msg &reply)
+{
+}
+
 }

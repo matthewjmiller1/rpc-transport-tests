@@ -31,4 +31,17 @@ namespace rt {
         const uint16_t _port;
         const RcvFn _rcvFn;
     };
+
+    struct Client {
+        explicit Client(std::string serverAddress, uint16_t serverPort);
+
+        virtual ~Client() = default;
+
+        virtual void sendReq(const Msg &request, Msg &reply) = 0;
+
+    protected:
+
+        const std::string _serverAddress;
+        const uint16_t _serverPort;
+    };
 }
