@@ -77,11 +77,57 @@ GrpcServer::wait()
 GrpcClient::GrpcClient(std::string serverAddress, uint16_t serverPort) :
     Client(serverAddress, serverPort)
 {
+    const auto portStr = std::to_string(serverPort);
+    const auto serverUri = serverAddress + ":" + portStr;
+
+    _channel = grpc::CreateChannel(serverUri,
+                                   grpc::InsecureChannelCredentials());
+    if (nullptr == _channel) {
+        throw std::invalid_argument("channel was not created");
+    }
+
+    _stub = grpc_transport::ReqReplyService::NewStub(_channel);
+    if (nullptr == _stub) {
+        throw std::invalid_argument("stub was not created");
+    }
 }
 
 void
 GrpcClient::sendReq(const Msg &request, Msg &reply)
 {
+    grpc::ClientContext context;
+    std::unique_ptr<grpc::ClientReaderWriter<grpc_transport::Msg,
+        grpc_transport::Msg>> stream(_stub->ReqReply(&context));
+
+    const auto deadline = std::chrono::system_clock::now() +
+        std::chrono::milliseconds(10000);
+    context.set_deadline(deadline);
+
+    for (const auto &buf : request._bufs) {
+        grpc_transport::Msg msg;
+        // XXX: this makes a deep copy of the data.
+        msg.set_data(buf._addr, buf._len);
+        stream->Write(msg);
+    }
+
+    stream->WritesDone();
+
+    grpc_transport::Msg msg;
+    while (stream->Read(&msg)) {
+        DataBuf buf;
+        auto data = msg.mutable_data();
+        buf._addr =
+            const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(data->data()));
+        buf._len = data->size();
+        reply._bufs.push_back(buf);
+    }
+
+    const auto status = stream->Finish();
+    if (!status.ok()) {
+        throw std::runtime_error("send failed: (" +
+                                 std::to_string(status.error_code()) +
+                                 ") " + status.error_message());
+    }
 }
 
 }

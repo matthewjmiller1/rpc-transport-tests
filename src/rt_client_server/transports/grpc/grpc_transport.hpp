@@ -34,6 +34,11 @@ struct GrpcClient final : public Client {
     explicit GrpcClient(std::string serverAddress, uint16_t serverPort);
 
     void sendReq(const Msg &request, Msg &reply) override;
+
+private:
+
+    std::shared_ptr<grpc::Channel> _channel;
+    std::shared_ptr<grpc_transport::ReqReplyService::Stub> _stub;
 };
 
 }

@@ -2,7 +2,28 @@ syntax = "proto3";
 
 package rpc_tranports;
 
-message RtData {
-  uint64 req_timestamp = 1;
-  bytes data = 2;
+message ReadHeader {
+  int32 buf_count = 1;
+  int32 buf_size = 2;
+}
+
+message WriteHeader {
+}
+
+message Header {
+  oneof hdr {
+    ReadHeader r_hdr = 1;
+    WriteHeader w_hdr = 2;
+  }
+}
+
+message Data {
+  bytes data = 1;
+}
+
+message Payload {
+  oneof payload {
+    Header hdr = 1;
+    Data data = 2;
+  }
 }

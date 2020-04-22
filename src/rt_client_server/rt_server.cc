@@ -19,6 +19,7 @@ main(int argc, char **argv)
 {
     const auto addr = "::";
 
+    gflags::SetUsageMessage("RPC transport test server");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
     std::unique_ptr<rt::Server> transport;
