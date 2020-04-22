@@ -29,6 +29,7 @@ RUN apt-get update && \
     libjemalloc-dev \
     libssl-dev \
     libunwind-dev \
+    libsodium-dev \
     net-tools \
     iproute2 \
     tcpdump \
