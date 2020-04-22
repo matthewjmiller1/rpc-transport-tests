@@ -31,7 +31,12 @@
 *.out
 *.app
 
+# vim
+*.swp
+*.swo
+
 # cmake
+build
 CMakeLists.txt.user
 CMakeCache.txt
 CMakeFiles
