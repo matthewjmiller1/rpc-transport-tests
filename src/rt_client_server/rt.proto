@@ -1,19 +1,19 @@
 syntax = "proto3";
 
-package rpc_tranports;
+package rpc_transports;
 
-message ReadHeader {
+message ReadReqHeader {
   int32 buf_count = 1;
   int32 buf_size = 2;
 }
 
-message WriteHeader {
+message WriteReqHeader {
 }
 
 message Header {
   oneof hdr {
-    ReadHeader r_hdr = 1;
-    WriteHeader w_hdr = 2;
+    ReadReqHeader r_req_hdr = 1;
+    WriteReqHeader w_req_hdr = 2;
   }
 }
 

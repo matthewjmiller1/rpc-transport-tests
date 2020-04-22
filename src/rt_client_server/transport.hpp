@@ -8,8 +8,10 @@
 namespace rt {
 
     struct DataBuf final {
-        uint8_t *_addr;
+        const uint8_t *_addr;
         size_t _len;
+
+        static const uint8_t *cStrToAddr(const char *cStr);
     };
 
     struct Msg final {

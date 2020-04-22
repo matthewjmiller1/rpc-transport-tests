@@ -58,6 +58,6 @@ foreach(_target rt_client rt_server)
   add_executable(${_target} "${_target}.cc"
     ${RT_PROTO_SRCS} ${RT_PROTO_HDRS} ${TRANSPORT_HDRS})
   target_link_libraries(${_target} ${Protobuf_LIBRARIES} ${TRANSPORT_LIBS}
-    gflags)
+    gflags -lsodium)
   target_include_directories(${_target} PRIVATE .)
 endforeach()

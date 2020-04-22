@@ -19,10 +19,9 @@ ReqReplyServiceImpl::ReqReply(grpc::ServerContext *context,
     while (stream->Read(&req)) {
         DataBuf buf;
         auto data = req.mutable_data();
-        buf._addr =
-            const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(data->data()));
+        buf._addr = rt::DataBuf::cStrToAddr(data->data());
         buf._len = data->size();
-        rcvMsg._bufs.push_back(buf);
+        rcvMsg._bufs.push_back(std::move(buf));
     }
 
     rcvFn(rcvMsg, sndMsg);
@@ -116,10 +115,9 @@ GrpcClient::sendReq(const Msg &request, Msg &reply)
     while (stream->Read(&msg)) {
         DataBuf buf;
         auto data = msg.mutable_data();
-        buf._addr =
-            const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(data->data()));
+        buf._addr = rt::DataBuf::cStrToAddr(data->data());
         buf._len = data->size();
-        reply._bufs.push_back(buf);
+        reply._bufs.push_back(std::move(buf));
     }
 
     const auto status = stream->Finish();
