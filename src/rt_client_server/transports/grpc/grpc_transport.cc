@@ -63,7 +63,7 @@ GrpcServer::GrpcServer(std::string address, uint16_t port,
 
     _server = builder.BuildAndStart();
     if (nullptr == _server) {
-        throw std::invalid_argument("server was not created");
+        throw std::runtime_error("server was not created");
     }
 }
 
@@ -82,12 +82,12 @@ GrpcClient::GrpcClient(std::string serverAddress, uint16_t serverPort) :
     _channel = grpc::CreateChannel(serverUri,
                                    grpc::InsecureChannelCredentials());
     if (nullptr == _channel) {
-        throw std::invalid_argument("channel was not created");
+        throw std::runtime_error("channel was not created");
     }
 
     _stub = grpc_transport::ReqReplyService::NewStub(_channel);
     if (nullptr == _stub) {
-        throw std::invalid_argument("stub was not created");
+        throw std::runtime_error("stub was not created");
     }
 }
 

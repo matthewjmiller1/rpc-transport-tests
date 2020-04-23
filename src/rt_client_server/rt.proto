@@ -10,10 +10,18 @@ message ReadReqHeader {
 message WriteReqHeader {
 }
 
+message ReadRspHeader {
+}
+
+message WriteRspHeader {
+}
+
 message Header {
   oneof hdr {
     ReadReqHeader r_req_hdr = 1;
     WriteReqHeader w_req_hdr = 2;
+    ReadRspHeader r_rsp_hdr = 3;
+    WriteRspHeader w_rsp_hdr = 4;
   }
 }
 

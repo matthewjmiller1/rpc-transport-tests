@@ -1,6 +1,6 @@
 #include <transports/null/null_transport.hpp>
 #include <transports/grpc/grpc_transport.hpp>
-#include <rt.pb.h>
+#include "payload_creator.hpp"
 
 #include <memory>
 #include <chrono>
@@ -28,24 +28,18 @@ DEFINE_int32(block_size, 4096, "block size for workload");
 DEFINE_int32(block_count, 1024, "block count for workload");
 DEFINE_int32(op_count, 1, "op count to execute");
 
-struct PayloadCreator {
-    virtual ~PayloadCreator() = default;
-    virtual void fill(std::vector<std::string> &msgData,
-                      rt::Msg &msg, int32_t blockSize, int32_t blockCount) = 0;
-};
-
-struct WritePayloadCreator final : public PayloadCreator {
+struct WriteReqPayloadCreator final : public PayloadCreator {
     void fill(std::vector<std::string> &msgData, rt::Msg &msg,
               int32_t blockSize, int32_t blockCount) override;
 };
 
-struct ReadPayloadCreator final : public PayloadCreator {
+struct ReadReqPayloadCreator final : public PayloadCreator {
     void fill(std::vector<std::string> &msgData, rt::Msg &msg,
               int32_t blockSize, int32_t blockCount) override;
 };
 
 void
-WritePayloadCreator::fill(std::vector<std::string> &msgData,
+WriteReqPayloadCreator::fill(std::vector<std::string> &msgData,
                           rt::Msg &msg, int32_t blockSize, int32_t blockCount)
 {
     // The first buffer is the header
@@ -61,22 +55,21 @@ WritePayloadCreator::fill(std::vector<std::string> &msgData,
             payload.mutable_data()->set_data(buf.get(), len);
         }
 
-        std::string str;
-        payload.SerializeToString(&str);
-
-        rt::DataBuf buf;
-        buf._addr = rt::DataBuf::cStrToAddr(str.data());
-        buf._len = str.size();
-        msg._bufs.push_back(std::move(buf));
-
-        msgData.push_back(std::move(str));
+        addToMsg(payload, msgData, msg);
     }
 }
 
 void
-ReadPayloadCreator::fill(std::vector<std::string> &msgData,
+ReadReqPayloadCreator::fill(std::vector<std::string> &msgData,
                          rt::Msg &msg, int32_t blockSize, int32_t blockCount)
 {
+    rpc_transports::Payload payload;
+    auto hdr = payload.mutable_hdr()->mutable_r_req_hdr();
+
+    hdr->set_buf_count(blockCount);
+    hdr->set_buf_size(blockSize);
+
+    addToMsg(payload, msgData, msg);
 }
 
 void
@@ -110,9 +103,9 @@ main(int argc, char **argv)
     }
 
     if (FLAGS_workload.find("write") != std::string::npos) {
-        payloadCreator = std::make_unique<WritePayloadCreator>();
+        payloadCreator = std::make_unique<WriteReqPayloadCreator>();
     } else if (FLAGS_workload.find("read") != std::string::npos) {
-        payloadCreator = std::make_unique<ReadPayloadCreator>();
+        payloadCreator = std::make_unique<ReadReqPayloadCreator>();
     } else {
         std::cerr << "Unknown workload: " << FLAGS_workload << std::endl;
         return 1;

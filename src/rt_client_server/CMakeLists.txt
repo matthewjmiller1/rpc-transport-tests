@@ -16,7 +16,7 @@ set(GRPC_LIBS gRPC::grpc++ gRPC::grpc++_reflection)
 
 protobuf_generate_cpp(RT_PROTO_SRCS RT_PROTO_HDRS rt.proto)
 
-list(APPEND TRANSPORT_HDRS transport.hpp)
+list(APPEND TRANSPORT_HDRS transport.hpp payload_creator.hpp)
 
 add_library(transport STATIC transport.cc)
 target_include_directories(transport PUBLIC .)
