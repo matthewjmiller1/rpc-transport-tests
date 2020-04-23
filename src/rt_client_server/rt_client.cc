@@ -3,9 +3,22 @@
 #include <rt.pb.h>
 
 #include <memory>
+#include <chrono>
+#include <cmath>
 
 #include <gflags/gflags.h>
 #include <sodium.h>
+
+#include <boost/accumulators/accumulators.hpp>
+#include <boost/accumulators/statistics/stats.hpp>
+#include <boost/accumulators/statistics/mean.hpp>
+#include <boost/accumulators/statistics/count.hpp>
+#include <boost/accumulators/statistics/variance.hpp>
+
+namespace ba = boost::accumulators;
+
+typedef ba::accumulator_set<double,
+        ba::stats<ba::tag::count, ba::tag::mean, ba::tag::variance> > StatSet;
 
 DEFINE_string(address, "localhost", "address to connnect to");
 DEFINE_int32(port, 54321, "port to connect to");
@@ -66,6 +79,14 @@ ReadPayloadCreator::fill(std::vector<std::string> &msgData,
 {
 }
 
+void
+printStats(const std::string &label, const StatSet &stats)
+{
+    std::cout << label << ": avg=" << ba::mean(stats) <<
+        " dev=" << std::sqrt(ba::variance(stats)) <<
+        " count=" << ba::count(stats) <<  std::endl;
+}
+
 int
 main(int argc, char **argv)
 {
@@ -97,12 +118,28 @@ main(int argc, char **argv)
         return 1;
     }
 
+    std::cout << "Sending " <<  FLAGS_op_count << " " << FLAGS_workload <<
+        " op(s), each for " << FLAGS_block_count << " blocks of size " <<
+        FLAGS_block_size << " bytes" << std::endl;
+
+    StatSet latAcc;
+    StatSet tputAcc;
     for (auto i = 0; i < FLAGS_op_count; ++i) {
         rt::Msg req, reply;
         std::vector<std::string> reqData;
         payloadCreator->fill(reqData, req, FLAGS_block_size, FLAGS_block_count);
+        const auto start = std::chrono::steady_clock::now();
         transport->sendReq(req, reply);
+        const auto end = std::chrono::steady_clock::now();
+        const auto payloadBytes = (FLAGS_block_size * FLAGS_block_count);
+        const std::chrono::duration<double> delta = (end - start);
+        const std::chrono::duration<double, std::milli> deltaMs = (end - start);
+        latAcc(deltaMs.count());
+        tputAcc((((8 * payloadBytes)) / delta.count()) / (1024 * 1024));
     }
+
+    printStats("Throughput (Mbps)", tputAcc);
+    printStats("Latency (ms)", latAcc);
 
     return 0;
 }
