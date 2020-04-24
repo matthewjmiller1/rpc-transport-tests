@@ -15,8 +15,7 @@ struct ReqReplyServiceImpl final :
 };
 
 struct GrpcServer final : public Server {
-    explicit GrpcServer(std::string address, uint16_t port,
-                        std::function<void(const Msg&, Msg&)> rcvFn);
+    explicit GrpcServer(std::string address, uint16_t port, RcvFn rcvFn);
 
     void wait() override;
 
@@ -33,7 +32,8 @@ private:
 struct GrpcClient final : public Client {
     explicit GrpcClient(std::string serverAddress, uint16_t serverPort);
 
-    void sendReq(const Msg &request, Msg &reply) override;
+    void sendReq(const Msg &request, Msg &reply,
+                 MsgDataContainer &replyData) override;
 
 private:
 

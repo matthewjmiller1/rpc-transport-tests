@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <vector>
 #include <functional>
+#include <memory>
 
 namespace rt {
 
@@ -18,7 +19,9 @@ namespace rt {
         std::vector<DataBuf> _bufs;
     };
 
-    typedef std::function<void(const Msg&, Msg&)> RcvFn;
+    typedef std::vector<std::unique_ptr<std::string>> MsgDataContainer;
+    typedef std::function<void(const Msg& req, Msg& rsp,
+                               MsgDataContainer &rspData)> RcvFn;
 
     struct Server {
         explicit Server(std::string address, uint16_t port, RcvFn rcvFn);
@@ -39,7 +42,8 @@ namespace rt {
 
         virtual ~Client() = default;
 
-        virtual void sendReq(const Msg &request, Msg &reply) = 0;
+        virtual void sendReq(const Msg &request, Msg &reply,
+                             MsgDataContainer &replyData) = 0;
 
     protected:
 

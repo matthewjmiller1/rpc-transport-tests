@@ -3,8 +3,7 @@
 
 namespace rt {
 
-NullServer::NullServer(std::string address, uint16_t port,
-               std::function<void(const Msg&, Msg&)> rcvFn) :
+NullServer::NullServer(std::string address, uint16_t port, RcvFn rcvFn) :
     Server(address, port, rcvFn) {}
 
 void
@@ -18,7 +17,7 @@ NullClient::NullClient(std::string serverAddress, uint16_t serverPort) :
 }
 
 void
-NullClient::sendReq(const Msg &request, Msg &reply)
+NullClient::sendReq(const Msg &request, Msg &reply, MsgDataContainer &replyData)
 {
 }
 

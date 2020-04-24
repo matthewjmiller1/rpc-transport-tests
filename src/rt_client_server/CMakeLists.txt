@@ -4,6 +4,7 @@ project(rpc_transport)
 
 find_package(Protobuf REQUIRED)
 find_package(gflags REQUIRED)
+find_package(glog REQUIRED)
 find_package(gRPC REQUIRED)
 
 set(CMAKE_CXX_STANDARD 14)
@@ -16,6 +17,7 @@ set(GRPC_LIBS gRPC::grpc++ gRPC::grpc++_reflection)
 
 protobuf_generate_cpp(RT_PROTO_SRCS RT_PROTO_HDRS rt.proto)
 
+list(APPEND LOG_HDRS log_levels.hpp)
 list(APPEND TRANSPORT_HDRS transport.hpp payload_creator.hpp)
 
 add_library(transport STATIC transport.cc)
@@ -45,7 +47,7 @@ foreach(_target ${TRANSPORTS})
   endif()
   add_library(${_target}_transport STATIC
     transports/${_target}/${TRANSPORT_BASE}.cc ${PROTO_SRCS} ${PROTO_HDRS}
-    ${GRPC_SRCS} ${GRPC_HDRS})
+    ${GRPC_SRCS} ${GRPC_HDRS} ${LOG_HDRS})
   target_include_directories(${TRANSPORT_BASE} PUBLIC
     ${CMAKE_CURRENT_BINARY_DIR})
   target_link_libraries(${TRANSPORT_BASE} transport ${PROTO_LIBS})
@@ -56,8 +58,8 @@ endforeach()
 # Build source files
 foreach(_target rt_client rt_server)
   add_executable(${_target} "${_target}.cc"
-    ${RT_PROTO_SRCS} ${RT_PROTO_HDRS} ${TRANSPORT_HDRS})
+    ${RT_PROTO_SRCS} ${RT_PROTO_HDRS} ${TRANSPORT_HDRS} ${LOG_HDRS})
   target_link_libraries(${_target} ${Protobuf_LIBRARIES} ${TRANSPORT_LIBS}
-    gflags -lsodium)
+    gflags glog::glog -lsodium)
   target_include_directories(${_target} PRIVATE .)
 endforeach()

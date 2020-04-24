@@ -8,12 +8,16 @@ message ReadReqHeader {
 }
 
 message WriteReqHeader {
+  int32 buf_count = 1;
+  int32 buf_size = 2;
 }
 
 message ReadRspHeader {
+  uint64 msg_process_time_us = 1;
 }
 
 message WriteRspHeader {
+  uint64 msg_process_time_us = 1;
 }
 
 message Header {

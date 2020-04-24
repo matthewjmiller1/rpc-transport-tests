@@ -3,6 +3,9 @@
 
 #include <string>
 
+#include <glog/logging.h>
+#include <log_levels.hpp>
+
 namespace rt {
 
 RcvFn GrpcServer::_globalRcvFn;
@@ -15,16 +18,42 @@ ReqReplyServiceImpl::ReqReply(grpc::ServerContext *context,
     grpc_transport::Msg req;
     rt::Msg rcvMsg, sndMsg;
     auto rcvFn = GrpcServer::getRcvFn();
+    rt::MsgDataContainer reqData, rspData;
 
     while (stream->Read(&req)) {
+        if (VLOG_IS_ON(rt::ll::STRING_MEM) && (req.data().size() < 100)) {
+            VLOG(rt::ll::STRING_MEM) << "Deserialized msg: \"" <<
+                req.DebugString();
+        }
+        auto str = req.release_data();
+        reqData.push_back(std::unique_ptr<std::string>(str));
         DataBuf buf;
-        auto data = req.mutable_data();
-        buf._addr = rt::DataBuf::cStrToAddr(data->data());
-        buf._len = data->size();
+        buf._addr = rt::DataBuf::cStrToAddr(reqData.back()->data());
+        buf._len = reqData.back()->size();
+
+        if (VLOG_IS_ON(rt::ll::STRING_MEM) && (buf._len < 100)) {
+            VLOG(rt::ll::STRING_MEM) << "mem[0] " <<
+                static_cast<unsigned
+                    int>(static_cast<unsigned char>(buf._addr[0]));
+            VLOG(rt::ll::STRING_MEM) << "storing " <<
+                static_cast<const void*>(buf._addr) <<
+                " " << buf._len;
+            for (char ch : *reqData.back()) {
+                VLOG(rt::ll::STRING_MEM) << "0x" << static_cast<unsigned
+                    int>(static_cast<unsigned char>(ch));
+            }
+        }
         rcvMsg._bufs.push_back(std::move(buf));
     }
 
-    rcvFn(rcvMsg, sndMsg);
+    try {
+        rcvFn(rcvMsg, sndMsg, rspData);
+    } catch (const std::exception& e) {
+        std::cerr << "rcvFn exception: " << e.what() << std::endl;
+        std::abort();
+    }
+
+    VLOG(rt::ll::STRING_MEM) << "rsp size " << sndMsg._bufs.size();
 
     for (const auto &buf : sndMsg._bufs) {
         grpc_transport::Msg rsp;
@@ -41,8 +70,7 @@ GrpcServer::getRcvFn()
     return _globalRcvFn;
 }
 
-GrpcServer::GrpcServer(std::string address, uint16_t port,
-                       std::function<void(const Msg&, Msg&)> rcvFn) :
+GrpcServer::GrpcServer(std::string address, uint16_t port, RcvFn rcvFn) :
     Server(address, port, rcvFn)
 {
     const auto portStr = std::to_string(port);
@@ -92,7 +120,7 @@ GrpcClient::GrpcClient(std::string serverAddress, uint16_t serverPort) :
 }
 
 void
-GrpcClient::sendReq(const Msg &request, Msg &reply)
+GrpcClient::sendReq(const Msg &request, Msg &reply, MsgDataContainer &replyData)
 {
     grpc::ClientContext context;
     std::unique_ptr<grpc::ClientReaderWriter<grpc_transport::Msg,
@@ -104,8 +132,22 @@ GrpcClient::sendReq(const Msg &request, Msg &reply)
 
     for (const auto &buf : request._bufs) {
         grpc_transport::Msg msg;
+
+        VLOG(rt::ll::STRING_MEM) << "mem[0] " <<
+            static_cast<unsigned
+                int>(static_cast<unsigned char>(buf._addr[0]));
+
         // XXX: this makes a deep copy of the data.
         msg.set_data(buf._addr, buf._len);
+
+        if (VLOG_IS_ON(rt::ll::STRING_MEM) && (buf._len < 100)) {
+            VLOG(rt::ll::STRING_MEM) << "Serialized msg: \"" <<
+                msg.DebugString() << "\"";
+            for (char ch : msg.data()) {
+                VLOG(rt::ll::STRING_MEM) << "0x" << static_cast<unsigned
+                    int>(static_cast<unsigned char>(ch));
+            }
+        }
         stream->Write(msg);
     }
 
@@ -113,8 +155,9 @@ GrpcClient::sendReq(const Msg &request, Msg &reply)
 
     grpc_transport::Msg msg;
     while (stream->Read(&msg)) {
+        auto data = msg.release_data();
+        replyData.push_back(std::unique_ptr<std::string>(data));
         DataBuf buf;
-        auto data = msg.mutable_data();
         buf._addr = rt::DataBuf::cStrToAddr(data->data());
         buf._len = data->size();
         reply._bufs.push_back(std::move(buf));

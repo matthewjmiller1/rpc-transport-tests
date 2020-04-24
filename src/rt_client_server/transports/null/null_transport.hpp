@@ -5,8 +5,7 @@
 namespace rt {
 
 struct NullServer final : public Server {
-    explicit NullServer(std::string address, uint16_t port,
-                        std::function<void(const Msg&, Msg&)> rcvFn);
+    explicit NullServer(std::string address, uint16_t port, RcvFn rcvFn);
 
     void wait() override;
 };
@@ -14,7 +13,8 @@ struct NullServer final : public Server {
 struct NullClient final : public Client {
     explicit NullClient(std::string serverAddress, uint16_t serverPort);
 
-    void sendReq(const Msg &request, Msg &reply) override;
+    void sendReq(const Msg &request, Msg &reply,
+                 MsgDataContainer &replyData) override;
 };
 
 }

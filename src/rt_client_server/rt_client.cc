@@ -25,29 +25,32 @@ DEFINE_int32(port, 54321, "port to connect to");
 DEFINE_string(transport, "null", "transport to use");
 DEFINE_string(workload, "write", "workload type");
 DEFINE_int32(block_size, 4096, "block size for workload");
-DEFINE_int32(block_count, 1024, "block count for workload");
+DEFINE_int32(block_count, 2, "block count for workload");
 DEFINE_int32(op_count, 1, "op count to execute");
 
 struct WriteReqPayloadCreator final : public PayloadCreator {
-    void fill(std::vector<std::string> &msgData, rt::Msg &msg,
+    void fill(rt::MsgDataContainer &msgData, rt::Msg &msg,
               int32_t blockSize, int32_t blockCount) override;
 };
 
 struct ReadReqPayloadCreator final : public PayloadCreator {
-    void fill(std::vector<std::string> &msgData, rt::Msg &msg,
+    void fill(rt::MsgDataContainer &msgData, rt::Msg &msg,
               int32_t blockSize, int32_t blockCount) override;
 };
 
 void
-WriteReqPayloadCreator::fill(std::vector<std::string> &msgData,
-                          rt::Msg &msg, int32_t blockSize, int32_t blockCount)
+WriteReqPayloadCreator::fill(rt::MsgDataContainer &msgData,
+                             rt::Msg &msg, int32_t blockSize,
+                             int32_t blockCount)
 {
     // The first buffer is the header
     for (auto i = 0; i < (blockCount + 1); ++i) {
         rpc_transports::Payload payload;
 
         if (0 == i) {
-            payload.mutable_hdr()->mutable_w_req_hdr();
+            auto hdr = payload.mutable_hdr()->mutable_w_req_hdr();
+            hdr->set_buf_count(blockCount);
+            hdr->set_buf_size(blockSize);
         } else {
             const auto len = blockSize;
             auto buf = std::make_unique<uint8_t[]>(len);
@@ -60,8 +63,8 @@ WriteReqPayloadCreator::fill(std::vector<std::string> &msgData,
 }
 
 void
-ReadReqPayloadCreator::fill(std::vector<std::string> &msgData,
-                         rt::Msg &msg, int32_t blockSize, int32_t blockCount)
+ReadReqPayloadCreator::fill(rt::MsgDataContainer &msgData,
+                            rt::Msg &msg, int32_t blockSize, int32_t blockCount)
 {
     rpc_transports::Payload payload;
     auto hdr = payload.mutable_hdr()->mutable_r_req_hdr();
@@ -70,6 +73,37 @@ ReadReqPayloadCreator::fill(std::vector<std::string> &msgData,
     hdr->set_buf_size(blockSize);
 
     addToMsg(payload, msgData, msg);
+}
+
+static uint64_t
+getRemoteProcessTimeUs(const rt::Msg &reply)
+{
+    uint64_t retVal = 0;
+
+    if (reply._bufs.empty()) {
+        throw std::runtime_error("empty reply");
+    }
+
+    std::string str(reinterpret_cast<char const*>(reply._bufs[0]._addr),
+                    reply._bufs[0]._len);
+    rpc_transports::Payload payload;
+    payload.ParseFromString(str);
+
+    if (!payload.has_hdr()) {
+        throw std::runtime_error("no header");
+    }
+
+    const auto hdr = payload.hdr();
+
+    if (hdr.has_w_rsp_hdr()) {
+        retVal = hdr.w_rsp_hdr().msg_process_time_us(); 
+    } else if (hdr.has_r_rsp_hdr()) {
+        retVal = hdr.r_rsp_hdr().msg_process_time_us(); 
+    } else {
+        throw std::runtime_error("unexpected header type");
+    }
+
+    return retVal;
 }
 
 void
@@ -84,6 +118,7 @@ int
 main(int argc, char **argv)
 {
     gflags::SetUsageMessage("RPC transport test client");
+    google::InitGoogleLogging(argv[0]);
     gflags::ParseCommandLineFlags(&argc, &argv, true);
 
     std::unique_ptr<rt::Client> transport;
@@ -119,14 +154,25 @@ main(int argc, char **argv)
     StatSet tputAcc;
     for (auto i = 0; i < FLAGS_op_count; ++i) {
         rt::Msg req, reply;
-        std::vector<std::string> reqData;
+        rt::MsgDataContainer reqData, replyData;
         payloadCreator->fill(reqData, req, FLAGS_block_size, FLAGS_block_count);
         const auto start = std::chrono::steady_clock::now();
-        transport->sendReq(req, reply);
+        VLOG(rt::ll::STRING_MEM) << "mem[0] " <<
+            static_cast<unsigned
+                int>(static_cast<unsigned char>(req._bufs[0]._addr[0]));
+        transport->sendReq(req, reply, replyData);
         const auto end = std::chrono::steady_clock::now();
         const auto payloadBytes = (FLAGS_block_size * FLAGS_block_count);
         const std::chrono::duration<double> delta = (end - start);
-        const std::chrono::duration<double, std::milli> deltaMs = (end - start);
+        std::chrono::duration<double, std::milli> deltaMs = (end - start);
+
+        VLOG(rt::ll::LATENCY) << "Original deltaMs: " << deltaMs.count();
+        const auto remoteTimeUs = getRemoteProcessTimeUs(reply);
+        std::chrono::microseconds remoteTime(remoteTimeUs);
+        VLOG(rt::ll::LATENCY) << "remoteTimeUsec: " << remoteTime.count();
+        deltaMs -= remoteTime;
+        VLOG(rt::ll::LATENCY) << "Calculated deltaMs: " << deltaMs.count();
+
         latAcc(deltaMs.count());
         tputAcc((((8 * payloadBytes)) / delta.count()) / (1024 * 1024));
     }
