@@ -1,5 +1,6 @@
 #include <transports/null/null_transport.hpp>
 #include <transports/grpc/grpc_transport.hpp>
+#include <transports/rsocket/rsocket_transport.hpp>
 #include "payload_creator.hpp"
 
 #include <memory>
@@ -132,6 +133,9 @@ main(int argc, char **argv)
         transport = std::make_unique<rt::NullClient>(FLAGS_address, FLAGS_port);
     } else if (FLAGS_transport.find("grpc") != std::string::npos) {
         transport = std::make_unique<rt::GrpcClient>(FLAGS_address, FLAGS_port);
+    } else if (FLAGS_transport.find("rsocket") != std::string::npos) {
+        transport = std::make_unique<rt::RsocketClient>(FLAGS_address,
+                                                        FLAGS_port);
     } else {
         std::cerr << "Unknown transport: " << FLAGS_transport << std::endl;
         return 1;

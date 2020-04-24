@@ -25,7 +25,8 @@ target_include_directories(transport PUBLIC .)
 
 set(TRANSPORTS
   null
-  grpc)
+  grpc
+  rsocket)
 
 # Build libraries
 foreach(_target ${TRANSPORTS})
