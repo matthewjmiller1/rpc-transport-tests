@@ -28,7 +28,17 @@ docker run --rm -it --name rpc_transports --net host $USER/rpc_transports
 docker exec -it rpc_transports /bin/bash
 ```
 
-### grpc Hello World
+### Logging
+The `rt_client` and `rt_server` programs use
+[glog](https://github.com/google/glog) for logging. The logs for a run will show
+up in `/tmp` by default (you can pass `-h` to the programs to see more options).
+
+For example, to run with more verbose logging:
+```
+rt_server -v 3
+```
+
+### grpc Transport Test
 In the server terminal:
 ```
 rt_server -transport grpc
