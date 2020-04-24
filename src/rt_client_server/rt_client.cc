@@ -163,15 +163,18 @@ main(int argc, char **argv)
         transport->sendReq(req, reply, replyData);
         const auto end = std::chrono::steady_clock::now();
         const auto payloadBytes = (FLAGS_block_size * FLAGS_block_count);
-        const std::chrono::duration<double> delta = (end - start);
+        std::chrono::duration<double> delta = (end - start);
         std::chrono::duration<double, std::milli> deltaMs = (end - start);
 
-        VLOG(rt::ll::LATENCY) << "Original deltaMs: " << deltaMs.count();
+        VLOG(rt::ll::LATENCY) << "Original deltaMs=" << deltaMs.count() <<
+            " delta=" << delta.count();
         const auto remoteTimeUs = getRemoteProcessTimeUs(reply);
         std::chrono::microseconds remoteTime(remoteTimeUs);
         VLOG(rt::ll::LATENCY) << "remoteTimeUsec: " << remoteTime.count();
         deltaMs -= remoteTime;
-        VLOG(rt::ll::LATENCY) << "Calculated deltaMs: " << deltaMs.count();
+        delta -= remoteTime;
+        VLOG(rt::ll::LATENCY) << "Calculated deltaMs=" << deltaMs.count() <<
+            " delta=" << delta.count();
 
         latAcc(deltaMs.count());
         tputAcc((((8 * payloadBytes)) / delta.count()) / (1024 * 1024));
