@@ -28,6 +28,37 @@ docker run --rm -it --name rpc_transports --net host $USER/rpc_transports
 docker exec -it rpc_transports /bin/bash
 ```
 
+### grpc Hello World
+In the server terminal:
+```
+rt_server -transport grpc
+```
+
+To verify the server is running as expected, on the host machine you should see
+port 54321 listening:
+```
+$ sudo netstat -npatl | grep :54321
+tcp6       0      0 :::54321                :::*                    LISTEN      31434/rt_server
+$
+```
+
+This can port can be changed by using the `-port` option.
+
+In the client terminal
+```
+rt_client --transport grpc
+```
+
+E.g., to run 30 ops simulating a write workload (client sends to the server)
+with a chain of 1024 blocks, each with 4096 bytes:
+```
+$ rt_client -transport grpc -op_count 30 -block_count 1024 -block_size 4096 -workload write
+Sending 30 write op(s), each for 1024 blocks of size 4096 bytes
+Throughput (Mbps): avg=677.264 dev=96.9112 count=30
+Latency (ms): avg=48.39 dev=8.13084 count=30
+$ 
+```
+
 ### rsocket Hello World
 In the server terminal:
 ```
