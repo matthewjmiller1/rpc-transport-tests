@@ -10,6 +10,7 @@ find_package(folly REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system thread filesystem regex context
   program_options)
+find_package(yarpl REQUIRED)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)

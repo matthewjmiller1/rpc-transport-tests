@@ -10,11 +10,15 @@ struct RsocketServer final : public Server {
 
     void wait() override;
 
+    static RcvFn getRcvFn();
+
 private:
 
     struct Handler;
 
     std::unique_ptr<rsocket::RSocketServer> _server;
+
+    static RcvFn _globalRcvFn;
 };
 
 struct RsocketClient final : public Client {
