@@ -39,6 +39,11 @@ struct ReadReqPayloadCreator final : public PayloadCreator {
               int32_t blockSize, int32_t blockCount) override;
 };
 
+struct EchoReqPayloadCreator final : public PayloadCreator {
+    void fill(rt::MsgDataContainer &msgData, rt::Msg &msg,
+              int32_t blockSize, int32_t blockCount) override;
+};
+
 void
 WriteReqPayloadCreator::fill(rt::MsgDataContainer &msgData,
                              rt::Msg &msg, int32_t blockSize,
@@ -74,6 +79,32 @@ ReadReqPayloadCreator::fill(rt::MsgDataContainer &msgData,
     hdr->set_buf_size(blockSize);
 
     addToMsg(payload, msgData, msg);
+}
+
+void
+EchoReqPayloadCreator::fill(rt::MsgDataContainer &msgData,
+                            rt::Msg &msg, int32_t blockSize,
+                            int32_t blockCount)
+{
+#if 0
+    // The first buffer is the header
+    for (auto i = 0; i < (blockCount + 1); ++i) {
+        rpc_transports::Payload payload;
+
+        if (0 == i) {
+            auto hdr = payload.mutable_hdr()->mutable_w_req_hdr();
+            hdr->set_buf_count(blockCount);
+            hdr->set_buf_size(blockSize);
+        } else {
+            const auto len = blockSize;
+            auto buf = std::make_unique<uint8_t[]>(len);
+            randombytes_buf(buf.get(), len);
+            payload.mutable_data()->set_data(buf.get(), len);
+        }
+
+        addToMsg(payload, msgData, msg);
+    }
+#endif
 }
 
 static uint64_t
@@ -145,6 +176,8 @@ main(int argc, char **argv)
         payloadCreator = std::make_unique<WriteReqPayloadCreator>();
     } else if (FLAGS_workload.find("read") != std::string::npos) {
         payloadCreator = std::make_unique<ReadReqPayloadCreator>();
+    } else if (FLAGS_workload.find("echo") != std::string::npos) {
+        payloadCreator = std::make_unique<EchoReqPayloadCreator>();
     } else {
         std::cerr << "Unknown workload: " << FLAGS_workload << std::endl;
         return 1;
@@ -183,6 +216,8 @@ main(int argc, char **argv)
         latAcc(deltaMs.count());
         tputAcc((((8 * payloadBytes)) / delta.count()) / (1024 * 1024));
     }
+
+    // TODO: for echo, validate data
 
     printStats("Throughput (Mbps)", tputAcc);
     printStats("Latency (ms)", latAcc);

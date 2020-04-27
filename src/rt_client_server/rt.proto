@@ -12,11 +12,20 @@ message WriteReqHeader {
   int32 buf_size = 2;
 }
 
+message EchoReqHeader {
+  int32 buf_count = 1;
+  int32 buf_size = 2;
+}
+
 message ReadRspHeader {
   uint64 msg_process_time_us = 1;
 }
 
 message WriteRspHeader {
+  uint64 msg_process_time_us = 1;
+}
+
+message EchoRspHeader {
   uint64 msg_process_time_us = 1;
 }
 
@@ -26,6 +35,8 @@ message Header {
     WriteReqHeader w_req_hdr = 2;
     ReadRspHeader r_rsp_hdr = 3;
     WriteRspHeader w_rsp_hdr = 4;
+    EchoReqHeader e_req_hdr = 5;
+    EchoRspHeader e_rsp_hdr = 6;
   }
 }
 
