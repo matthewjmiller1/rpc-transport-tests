@@ -49,8 +49,11 @@ RsocketServer::Handler::handleRequestChannel(rsocket::Payload initialPayload,
         std::abort();
     }
 
-    return yarpl::flowable::Flowable<>::range(1, 2)->map([](int64_t v) {
-        return rsocket::Payload("test");
+    return yarpl::flowable::Flowable<>::range(0, sndMsg._bufs.size())->map(
+        [&sndMsg](int64_t idx) {
+        const auto &buf = sndMsg._bufs[idx];
+        // XXX: see if there's a way to do this zero-copy
+        return rsocket::Payload(folly::IOBuf::copyBuffer(buf._addr, buf._len));
     });
 }
 
