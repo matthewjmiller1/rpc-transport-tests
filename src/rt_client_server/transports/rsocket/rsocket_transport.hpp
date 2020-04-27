@@ -1,6 +1,7 @@
 #pragma once
 
 #include <transport.hpp>
+#include <rsocket/RSocketServer.h>
 
 namespace rt {
 
@@ -11,6 +12,9 @@ struct RsocketServer final : public Server {
 
 private:
 
+    struct Handler;
+
+    std::unique_ptr<rsocket::RSocketServer> _server;
 };
 
 struct RsocketClient final : public Client {

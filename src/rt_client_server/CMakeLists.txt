@@ -6,14 +6,31 @@ find_package(Protobuf REQUIRED)
 find_package(gflags REQUIRED)
 find_package(glog REQUIRED)
 find_package(gRPC REQUIRED)
+find_package(folly REQUIRED)
+find_package(fmt CONFIG REQUIRED)
+find_package(Boost REQUIRED COMPONENTS system thread filesystem regex context
+  program_options)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 add_compile_options(-Wall -Wextra -pedantic -Werror -Wno-unused-parameter)
 
 find_program(GRPC_CPP_PLUGIN_EXECUTABLE NAMES grpc_cpp_plugin)
+find_library(DOUBLE-CONVERSION double-conversion)
 
 set(GRPC_LIBS gRPC::grpc++ gRPC::grpc++_reflection)
+
+set(RSOCKET_LIBS
+  ReactiveSocket
+  folly
+  ${Boost_LIBRARIES}
+  ${DOUBLE-CONVERSION}
+  event
+  iberty
+  ${CMAKE_DL_LIBS}
+  yarpl
+  glog::glog
+  gflags)
 
 protobuf_generate_cpp(RT_PROTO_SRCS RT_PROTO_HDRS rt.proto)
 
@@ -31,6 +48,8 @@ set(TRANSPORTS
 # Build libraries
 foreach(_target ${TRANSPORTS})
   set(TRANSPORT_BASE ${_target}_transport)
+  set(TARGET_LIBS)
+
   if ("${_target}" STREQUAL "grpc")
     get_filename_component(PROTO_FILE
       "transports/${_target}/${TRANSPORT_BASE}.proto" ABSOLUTE)
@@ -46,12 +65,18 @@ foreach(_target ${TRANSPORTS})
         --plugin=protoc-gen-grpc="${GRPC_CPP_PLUGIN_EXECUTABLE}" "${PROTO_FILE}"
       DEPENDS "${PROTO_FILE}")
   endif()
+
+  if ("${_target}" STREQUAL "rsocket")
+    list(APPEND TARGET_LIBS ${RSOCKET_LIBS})
+  endif()
+
   add_library(${_target}_transport STATIC
     transports/${_target}/${TRANSPORT_BASE}.cc ${PROTO_SRCS} ${PROTO_HDRS}
     ${GRPC_SRCS} ${GRPC_HDRS} ${LOG_HDRS})
   target_include_directories(${TRANSPORT_BASE} PUBLIC
     ${CMAKE_CURRENT_BINARY_DIR})
-  target_link_libraries(${TRANSPORT_BASE} transport ${PROTO_LIBS})
+  target_link_libraries(${TRANSPORT_BASE} transport ${PROTO_LIBS}
+    ${TARGET_LIBS})
   list(APPEND TRANSPORT_LIBS ${TRANSPORT_BASE})
   list(APPEND TRANSPORT_HDRS transports/${_target}/${TRANSPORT_BASE}.hpp)
 endforeach()
