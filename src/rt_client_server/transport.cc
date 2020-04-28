@@ -1,13 +1,30 @@
 /* First, so it stays self-compiling */
 #include "transport.hpp"
 
+#include <sstream>
+#include <iostream>
+#include <iomanip>
+
 namespace rt {
 
 const uint8_t *
 DataBuf::cStrToAddr(const char *cStr)
 {
-    //return const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(cStr));
     return reinterpret_cast<const uint8_t *>(cStr);
+}
+
+std::string
+DataBuf::bytesToHex(const uint8_t *buf, size_t len)
+{
+    std::stringstream ss;
+
+    ss << "0x" << std::hex << std::setfill('0');
+
+    for (auto i = 0U; i < len; ++i) {
+	ss << std::hex << std::setw(2) << static_cast<int>(buf[i]);
+    }
+
+    return ss.str();
 }
 
 Server::Server(std::string address, uint16_t port, RcvFn rcvFn) :

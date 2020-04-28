@@ -8,6 +8,7 @@
 #include <cmath>
 
 #include <gflags/gflags.h>
+#include <glog/logging.h>
 #include <sodium.h>
 
 #include <boost/accumulators/accumulators.hpp>
@@ -29,25 +30,39 @@ DEFINE_int32(block_size, 4096, "block size for workload");
 DEFINE_int32(block_count, 2, "block count for workload");
 DEFINE_int32(op_count, 1, "op count to execute");
 
+struct ReplyValidator {
+    virtual ~ReplyValidator() = default;
+
+    virtual bool
+    isValid(const rt::Msg &req, const rt::Msg &reply) const
+    {
+        return true;
+    }
+};
+
 struct WriteReqPayloadCreator final : public PayloadCreator {
     void fill(rt::MsgDataContainer &msgData, rt::Msg &msg,
-              int32_t blockSize, int32_t blockCount) override;
+              int32_t blockSize, int32_t blockCount) const override;
 };
 
 struct ReadReqPayloadCreator final : public PayloadCreator {
     void fill(rt::MsgDataContainer &msgData, rt::Msg &msg,
-              int32_t blockSize, int32_t blockCount) override;
+              int32_t blockSize, int32_t blockCount) const override;
 };
 
 struct EchoReqPayloadCreator final : public PayloadCreator {
     void fill(rt::MsgDataContainer &msgData, rt::Msg &msg,
-              int32_t blockSize, int32_t blockCount) override;
+              int32_t blockSize, int32_t blockCount) const override;
+};
+
+struct EchoReplyValidator final : public ReplyValidator {
+    bool isValid(const rt::Msg &req, const rt::Msg &reply) const override;
 };
 
 void
 WriteReqPayloadCreator::fill(rt::MsgDataContainer &msgData,
                              rt::Msg &msg, int32_t blockSize,
-                             int32_t blockCount)
+                             int32_t blockCount) const
 {
     // The first buffer is the header
     for (auto i = 0; i < (blockCount + 1); ++i) {
@@ -70,7 +85,8 @@ WriteReqPayloadCreator::fill(rt::MsgDataContainer &msgData,
 
 void
 ReadReqPayloadCreator::fill(rt::MsgDataContainer &msgData,
-                            rt::Msg &msg, int32_t blockSize, int32_t blockCount)
+                            rt::Msg &msg, int32_t blockSize,
+                            int32_t blockCount) const
 {
     rpc_transports::Payload payload;
     auto hdr = payload.mutable_hdr()->mutable_r_req_hdr();
@@ -84,15 +100,14 @@ ReadReqPayloadCreator::fill(rt::MsgDataContainer &msgData,
 void
 EchoReqPayloadCreator::fill(rt::MsgDataContainer &msgData,
                             rt::Msg &msg, int32_t blockSize,
-                            int32_t blockCount)
+                            int32_t blockCount) const
 {
-#if 0
     // The first buffer is the header
     for (auto i = 0; i < (blockCount + 1); ++i) {
         rpc_transports::Payload payload;
 
         if (0 == i) {
-            auto hdr = payload.mutable_hdr()->mutable_w_req_hdr();
+            auto hdr = payload.mutable_hdr()->mutable_e_req_hdr();
             hdr->set_buf_count(blockCount);
             hdr->set_buf_size(blockSize);
         } else {
@@ -104,7 +119,34 @@ EchoReqPayloadCreator::fill(rt::MsgDataContainer &msgData,
 
         addToMsg(payload, msgData, msg);
     }
-#endif
+}
+
+bool
+EchoReplyValidator::isValid(const rt::Msg &req, const rt::Msg &reply) const
+{
+    if (req._bufs.size() != reply._bufs.size()) {
+        LOG(ERROR) << "req _bufs.size(" << req._bufs.size() <<
+            " != reply _bufs.size(" << reply._bufs.size() << ")";
+        return false;
+    }
+
+    // Skip the header, just validate the data
+    for (auto i = 1U; i < req._bufs.size(); ++i) {
+        const auto rc = memcmp(req._bufs[i]._addr,
+                               reply._bufs[i]._addr,
+                               req._bufs[i]._len);
+        if (0 != rc) {
+            const auto byteLen = std::min(100UL, req._bufs[i]._len);
+            VLOG(rt::ll::STRING_MEM) << "idx " << i << " req mem " <<
+                rt::DataBuf::bytesToHex(req._bufs[i]._addr, byteLen) <<
+                " reply mem " << 
+                rt::DataBuf::bytesToHex(reply._bufs[i]._addr, byteLen);
+            LOG(ERROR) << "echo data mismatch at index " << i;
+            return false;
+        }
+    }
+
+    return true;
 }
 
 static uint64_t
@@ -131,6 +173,8 @@ getRemoteProcessTimeUs(const rt::Msg &reply)
         retVal = hdr.w_rsp_hdr().msg_process_time_us(); 
     } else if (hdr.has_r_rsp_hdr()) {
         retVal = hdr.r_rsp_hdr().msg_process_time_us(); 
+    } else if (hdr.has_e_rsp_hdr()) {
+        retVal = hdr.e_rsp_hdr().msg_process_time_us(); 
     } else {
         throw std::runtime_error("unexpected header type");
     }
@@ -155,6 +199,7 @@ main(int argc, char **argv)
 
     std::unique_ptr<rt::Client> transport;
     std::unique_ptr<PayloadCreator> payloadCreator;
+    std::unique_ptr<ReplyValidator> replyValidator;
 
     if (sodium_init() < 0) {
         return 1;
@@ -174,10 +219,13 @@ main(int argc, char **argv)
 
     if (FLAGS_workload.find("write") != std::string::npos) {
         payloadCreator = std::make_unique<WriteReqPayloadCreator>();
+        replyValidator = std::make_unique<ReplyValidator>();
     } else if (FLAGS_workload.find("read") != std::string::npos) {
         payloadCreator = std::make_unique<ReadReqPayloadCreator>();
+        replyValidator = std::make_unique<ReplyValidator>();
     } else if (FLAGS_workload.find("echo") != std::string::npos) {
         payloadCreator = std::make_unique<EchoReqPayloadCreator>();
+        replyValidator = std::make_unique<EchoReplyValidator>();
     } else {
         std::cerr << "Unknown workload: " << FLAGS_workload << std::endl;
         return 1;
@@ -195,8 +243,7 @@ main(int argc, char **argv)
         payloadCreator->fill(reqData, req, FLAGS_block_size, FLAGS_block_count);
         const auto start = std::chrono::steady_clock::now();
         VLOG(rt::ll::STRING_MEM) << "mem[0] " <<
-            static_cast<unsigned
-                int>(static_cast<unsigned char>(req._bufs[0]._addr[0]));
+            rt::DataBuf::bytesToHex(req._bufs[0]._addr, 1);
         transport->sendReq(req, reply, replyData);
         const auto end = std::chrono::steady_clock::now();
         const auto payloadBytes = (FLAGS_block_size * FLAGS_block_count);
@@ -215,9 +262,12 @@ main(int argc, char **argv)
 
         latAcc(deltaMs.count());
         tputAcc((((8 * payloadBytes)) / delta.count()) / (1024 * 1024));
-    }
 
-    // TODO: for echo, validate data
+        if (!replyValidator->isValid(req, reply)) {
+            google::FlushLogFiles(google::INFO);
+            throw std::runtime_error("invalid reply");
+        }
+    }
 
     printStats("Throughput (Mbps)", tputAcc);
     printStats("Latency (ms)", latAcc);

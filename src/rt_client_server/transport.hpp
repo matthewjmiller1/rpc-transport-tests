@@ -13,6 +13,7 @@ namespace rt {
         size_t _len;
 
         static const uint8_t *cStrToAddr(const char *cStr);
+        static std::string bytesToHex(const uint8_t *buf, size_t len);
     };
 
     struct Msg final {

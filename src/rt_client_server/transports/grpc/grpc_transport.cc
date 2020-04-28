@@ -33,15 +33,13 @@ ReqReplyServiceImpl::ReqReply(grpc::ServerContext *context,
 
         if (VLOG_IS_ON(rt::ll::STRING_MEM) && (buf._len < 100)) {
             VLOG(rt::ll::STRING_MEM) << "mem[0] " <<
-                static_cast<unsigned
-                    int>(static_cast<unsigned char>(buf._addr[0]));
+                rt::DataBuf::bytesToHex(buf._addr, 1);
             VLOG(rt::ll::STRING_MEM) << "storing " <<
                 static_cast<const void*>(buf._addr) <<
                 " " << buf._len;
-            for (char ch : *reqData.back()) {
-                VLOG(rt::ll::STRING_MEM) << "0x" << static_cast<unsigned
-                    int>(static_cast<unsigned char>(ch));
-            }
+            VLOG(rt::ll::STRING_MEM) << 
+                rt::DataBuf::bytesToHex((uint8_t *) reqData.back()->c_str(),
+                                        reqData.back()->size());
         }
         rcvMsg._bufs.push_back(std::move(buf));
     }
@@ -134,8 +132,7 @@ GrpcClient::sendReq(const Msg &request, Msg &reply, MsgDataContainer &replyData)
         grpc_transport::Msg msg;
 
         VLOG(rt::ll::STRING_MEM) << "mem[0] " <<
-            static_cast<unsigned
-                int>(static_cast<unsigned char>(buf._addr[0]));
+            rt::DataBuf::bytesToHex(buf._addr, 1);
 
         // XXX: this makes a deep copy of the data.
         msg.set_data(buf._addr, buf._len);
@@ -143,10 +140,9 @@ GrpcClient::sendReq(const Msg &request, Msg &reply, MsgDataContainer &replyData)
         if (VLOG_IS_ON(rt::ll::STRING_MEM) && (buf._len < 100)) {
             VLOG(rt::ll::STRING_MEM) << "Serialized msg: \"" <<
                 msg.DebugString() << "\"";
-            for (char ch : msg.data()) {
-                VLOG(rt::ll::STRING_MEM) << "0x" << static_cast<unsigned
-                    int>(static_cast<unsigned char>(ch));
-            }
+            VLOG(rt::ll::STRING_MEM) << 
+                rt::DataBuf::bytesToHex((uint8_t *) msg.data().c_str(),
+                                        msg.data().size());
         }
         stream->Write(msg);
     }

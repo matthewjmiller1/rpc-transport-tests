@@ -9,8 +9,15 @@ struct PayloadCreator {
     virtual ~PayloadCreator() = default;
 
     virtual void fill(rt::MsgDataContainer &msgData,
-                      rt::Msg &msg, int32_t blockSize, int32_t blockCount) = 0;
+                      rt::Msg &msg, int32_t blockSize,
+                      int32_t blockCount) const = 0;
 
+    virtual void
+    fill(const rt::Msg &origMsg, rt::MsgDataContainer &msgData,
+         rt::Msg &msg, int32_t blockSize, int32_t blockCount) const
+    {
+        fill(msgData, msg, blockSize, blockCount);
+    }
 
     static void
     addToMsg(const rpc_transports::Payload &payload,
@@ -25,15 +32,16 @@ struct PayloadCreator {
         buf._len = msgData.back()->size();
         msg._bufs.push_back(std::move(buf));
 
-        VLOG(rt::ll::STRING_MEM) << "mem[0] " <<
-            static_cast<unsigned
-                int>(static_cast<unsigned char>(buf._addr[0]));
-        if (VLOG_IS_ON(rt::ll::STRING_MEM) && (buf._len < 100)) {
-            VLOG(rt::ll::STRING_MEM) << "Serialized string: \"" <<
-                payload.DebugString() << "\"";
-            for (char ch : *msgData.back()) {
-                VLOG(rt::ll::STRING_MEM) << "0x" << static_cast<unsigned
-                    int>(static_cast<unsigned char>(ch));
+        if (VLOG_IS_ON(rt::ll::STRING_MEM)) {
+            const auto byteLen = std::min(100UL, msg._bufs.back()._len);
+            VLOG(rt::ll::STRING_MEM) << "mem[0] " <<
+                rt::DataBuf::bytesToHex(msg._bufs.back()._addr, byteLen);
+            if (msg._bufs.back()._len < 100) {
+                VLOG(rt::ll::STRING_MEM) << "Serialized string: \"" <<
+                    payload.DebugString() << "\"";
+                VLOG(rt::ll::STRING_MEM) << 
+                    rt::DataBuf::bytesToHex((uint8_t *) msgData.back()->c_str(),
+                                            msgData.back()->size());
             }
         }
     }

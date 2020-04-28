@@ -6,6 +6,7 @@
 #include <memory>
 #include <iostream>
 #include <chrono>
+#include <csignal>
 
 #include <gflags/gflags.h>
 #include <sodium.h>
@@ -15,18 +16,26 @@ DEFINE_string(transport, "null", "transport to use");
 
 struct WriteRspPayloadCreator final : public PayloadCreator {
     void fill(rt::MsgDataContainer &msgData, rt::Msg &msg,
-              int32_t blockSize, int32_t blockCount) override;
+              int32_t blockSize, int32_t blockCount) const override;
 };
 
 struct ReadRspPayloadCreator final : public PayloadCreator {
     void fill(rt::MsgDataContainer &msgData, rt::Msg &msg,
-              int32_t blockSize, int32_t blockCount) override;
+              int32_t blockSize, int32_t blockCount) const override;
+};
+
+struct EchoRspPayloadCreator final : public PayloadCreator {
+    void fill(rt::MsgDataContainer &msgData, rt::Msg &msg,
+              int32_t blockSize, int32_t blockCount) const override {}
+    void fill(const rt::Msg &origMsg, rt::MsgDataContainer &msgData,
+              rt::Msg &msg, int32_t blockSize,
+              int32_t blockCount) const override;
 };
 
 void
 WriteRspPayloadCreator::fill(rt::MsgDataContainer &msgData,
                              rt::Msg &msg, int32_t blockSize,
-                             int32_t blockCount)
+                             int32_t blockCount) const
 {
     rpc_transports::Payload payload;
     payload.mutable_hdr()->mutable_w_rsp_hdr();
@@ -35,7 +44,8 @@ WriteRspPayloadCreator::fill(rt::MsgDataContainer &msgData,
 
 void
 ReadRspPayloadCreator::fill(rt::MsgDataContainer &msgData,
-                            rt::Msg &msg, int32_t blockSize, int32_t blockCount)
+                            rt::Msg &msg, int32_t blockSize,
+                            int32_t blockCount) const
 {
     std::vector<std::unique_ptr<uint8_t[]>> randData;
     const auto bufLen = blockSize;
@@ -66,6 +76,50 @@ ReadRspPayloadCreator::fill(rt::MsgDataContainer &msgData,
     }
 }
 
+void
+EchoRspPayloadCreator::fill(const rt::Msg &origMsg,
+                            rt::MsgDataContainer &msgData,
+                            rt::Msg &msg, int32_t blockSize,
+                            int32_t blockCount) const
+{
+    std::vector<rpc_transports::Payload> echoData;
+
+    // Deserialize the echo data and count that as the processing time.
+    const auto start = std::chrono::steady_clock::now();
+    for (const auto &buf : origMsg._bufs) {
+        rpc_transports::Payload payload;
+        std::string str(reinterpret_cast<char const*>(buf._addr), buf._len);
+        payload.ParseFromString(str);
+        echoData.push_back(std::move(payload));
+    }
+    const auto end = std::chrono::steady_clock::now();
+    const auto deltaUs =
+        std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+
+
+    // The first buffer is the header
+    for (auto i = 0UL; i < (echoData.size()); ++i) {
+        rpc_transports::Payload payload;
+
+        if (0 == i) {
+            auto hdr = payload.mutable_hdr()->mutable_e_rsp_hdr();
+            hdr->set_msg_process_time_us(deltaUs.count());
+        } else {
+            payload = std::move(echoData[i]);
+        }
+
+        addToMsg(payload, msgData, msg);
+
+        if (VLOG_IS_ON(rt::ll::STRING_MEM) && (i == 1)) {
+            const auto byteLen = std::min(100UL, origMsg._bufs[i]._len);
+            VLOG(rt::ll::STRING_MEM) << "idx " << i << " req mem " <<
+                rt::DataBuf::bytesToHex(origMsg._bufs[i]._addr, byteLen) <<
+                " reply mem " << 
+                rt::DataBuf::bytesToHex(msg._bufs[i]._addr, byteLen);
+        }
+    }
+}
+
 static void
 ServerRcvFn(const rt::Msg &req, rt::Msg &rsp, rt::MsgDataContainer &rspData)
 {
@@ -80,18 +134,15 @@ ServerRcvFn(const rt::Msg &req, rt::Msg &rsp, rt::MsgDataContainer &rspData)
         static_cast<const void*>(req._bufs[0]._addr) <<
         " " << req._bufs[0]._len;
     VLOG(rt::ll::STRING_MEM) << "mem[0] " <<
-        static_cast<unsigned
-            int>(static_cast<unsigned char>(req._bufs[0]._addr[0]));
+        rt::DataBuf::bytesToHex(req._bufs[0]._addr, 1);
 
     std::string str(reinterpret_cast<char const*>(req._bufs[0]._addr),
                     req._bufs[0]._len);
     rpc_transports::Payload payload;
 
     if (VLOG_IS_ON(rt::ll::STRING_MEM) && (str.size() < 100)) {
-        for (char ch : str) {
-            VLOG(rt::ll::STRING_MEM) << "0x" << static_cast<unsigned
-                int>(static_cast<unsigned char>(ch));
-        }
+        VLOG(rt::ll::STRING_MEM) << 
+            rt::DataBuf::bytesToHex((uint8_t *) str.c_str(), str.size());
     }
 
     payload.ParseFromString(str);
@@ -117,11 +168,22 @@ ServerRcvFn(const rt::Msg &req, rt::Msg &rsp, rt::MsgDataContainer &rspData)
         auto rHdr = hdr.r_req_hdr();
         blockSize = rHdr.buf_size();
         blockCount = rHdr.buf_count();
+    } else if (hdr.has_e_req_hdr()) {
+        payloadCreator = std::make_unique<EchoRspPayloadCreator>();
+        auto eHdr = hdr.e_req_hdr();
+        blockSize = eHdr.buf_size();
+        blockCount = eHdr.buf_count();
     } else {
         throw std::runtime_error("unexpected header type");
     }
 
-    payloadCreator->fill(rspData, rsp, blockSize, blockCount);
+    payloadCreator->fill(req, rspData, rsp, blockSize, blockCount);
+}
+
+static void
+sigIntFn(int s){
+    google::FlushLogFiles(google::INFO);
+    exit(1);
 }
 
 int
@@ -130,7 +192,14 @@ main(int argc, char **argv)
     const auto addr = "::";
 
     gflags::SetUsageMessage("RPC transport test server");
+    google::InitGoogleLogging(argv[0]);
     gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+    struct sigaction sigIntHandler;
+    sigIntHandler.sa_handler = sigIntFn;
+    sigemptyset(&sigIntHandler.sa_mask);
+    sigIntHandler.sa_flags = 0;
+    sigaction(SIGINT, &sigIntHandler, nullptr);
 
     std::unique_ptr<rt::Server> transport;
 
