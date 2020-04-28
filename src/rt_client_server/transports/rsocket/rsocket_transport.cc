@@ -8,6 +8,9 @@
 
 #include <iostream>
 
+#include <glog/logging.h>
+#include <log_levels.hpp>
+
 namespace rt {
 
 typedef yarpl::flowable::Flowable<rsocket::Payload> FlowablePayload;
@@ -27,10 +30,33 @@ RsocketServer::Handler::handleRequestChannel(rsocket::Payload initialPayload,
 {
     rt::Msg rcvMsg, sndMsg;
     auto rcvFn = RsocketServer::getRcvFn();
+    auto cnt = 0;
     rt::MsgDataContainer reqData, rspData;
 
-    // Create that request message by mapping over the stream.
-    request->map([&rcvMsg, &reqData](rsocket::Payload p) {
+    VLOG(rt::ll::STRING_MEM) << __func__ << " called";
+
+    auto subscriber = yarpl::flowable::Subscriber<rsocket::Payload>::create(
+        [&cnt, &rcvMsg, &reqData](rsocket::Payload p) {
+            // TODO: remove
+            std::cout << "receiving " << cnt << std::endl;
+            ++cnt;
+            auto str = p.moveDataToString();
+            auto strP = std::make_unique<std::string>(std::move(str));
+            reqData.push_back(std::move(strP));
+
+            DataBuf buf;
+            buf._addr = rt::DataBuf::cStrToAddr(reqData.back()->data());
+            buf._len = reqData.back()->size();
+
+            rcvMsg._bufs.push_back(std::move(buf));
+        });
+
+    request->subscribe(subscriber);
+    // Create the request message by mapping over the stream.
+    #if 0
+    request->map([&cnt, &rcvMsg, &reqData](rsocket::Payload p) {
+        std::cout << "receiving " << cnt << std::endl;
+        ++cnt;
         auto str = p.moveDataToString();
         auto strP = std::make_unique<std::string>(std::move(str));
         reqData.push_back(std::move(strP));
@@ -42,6 +68,12 @@ RsocketServer::Handler::handleRequestChannel(rsocket::Payload initialPayload,
         rcvMsg._bufs.push_back(std::move(buf));
         return 0;
     });
+    #endif
+
+    VLOG(rt::ll::STRING_MEM) << "rcvMsg size: " << rcvMsg._bufs.size();
+    // TODO: remove
+    std::cout << "rcvMsg size: " << rcvMsg._bufs.size() << " cnt: " <<
+        cnt << std::endl;
 
     try {
         rcvFn(rcvMsg, sndMsg, rspData);
@@ -92,14 +124,16 @@ RsocketClient::RsocketClient(std::string serverAddress, uint16_t serverPort) :
     Client(serverAddress, serverPort)
 {
     folly::SocketAddress address;
-    folly::ScopedEventBaseThread worker;
 
     address.setFromHostPort(serverAddress, serverPort);
 
-    auto _client =
+    _client =
         rsocket::RSocket::createConnectedClient(
             std::make_unique<rsocket::TcpConnectionFactory>(
-            *worker.getEventBase(), std::move(address))).get();
+            *_workerThread.getEventBase(), std::move(address))).get();
+    if (nullptr == _client) {
+        throw std::runtime_error("client was not created");
+    }
 }
 
 void
@@ -110,6 +144,8 @@ RsocketClient::sendReq(const Msg &request, Msg &reply,
         yarpl::flowable::Flowable<>::range(0, request._bufs.size())->map(
             [&request](int64_t idx) {
             const auto &buf = request._bufs[idx];
+            // TODO: remove
+            std::cout << "sending " << idx << std::endl;
             // wrapBuffer() is zero copy (vs. copyBuffer())
             return rsocket::Payload(folly::IOBuf::wrapBuffer(buf._addr,
                                                              buf._len));
@@ -117,7 +153,15 @@ RsocketClient::sendReq(const Msg &request, Msg &reply,
 
     auto requester = _client->getRequester();
     auto reqChannel = requester->requestChannel(reqFlow);
-    reqChannel->subscribe([](rsocket::Payload p) {});
+    reqChannel->subscribe([&reply, &replyData](rsocket::Payload p) {
+        auto str = p.moveDataToString();
+        auto strP = std::make_unique<std::string>(std::move(str));
+        replyData.push_back(std::move(strP));
+        DataBuf buf;
+        buf._addr = rt::DataBuf::cStrToAddr(strP->data());
+        buf._len = strP->size();
+        reply._bufs.push_back(std::move(buf));
+    });
 }
 
 }
