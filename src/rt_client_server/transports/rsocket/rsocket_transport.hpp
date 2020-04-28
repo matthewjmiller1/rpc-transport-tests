@@ -2,6 +2,7 @@
 
 #include <transport.hpp>
 #include <rsocket/RSocketServer.h>
+#include <rsocket/RSocketClient.h>
 
 namespace rt {
 
@@ -29,6 +30,7 @@ struct RsocketClient final : public Client {
 
 private:
 
+    std::unique_ptr<rsocket::RSocketClient> _client;
 };
 
 }

@@ -2,6 +2,7 @@
 #include "rsocket_transport.hpp"
 
 #include <rsocket/transports/tcp/TcpConnectionAcceptor.h>
+#include <rsocket/transports/tcp/TcpConnectionFactory.h>
 #include <rsocket/RSocket.h>
 #include <yarpl/Flowable.h>
 
@@ -90,12 +91,33 @@ RsocketServer::wait()
 RsocketClient::RsocketClient(std::string serverAddress, uint16_t serverPort) :
     Client(serverAddress, serverPort)
 {
+    folly::SocketAddress address;
+    folly::ScopedEventBaseThread worker;
+
+    address.setFromHostPort(serverAddress, serverPort);
+
+    auto _client =
+        rsocket::RSocket::createConnectedClient(
+            std::make_unique<rsocket::TcpConnectionFactory>(
+            *worker.getEventBase(), std::move(address))).get();
 }
 
 void
 RsocketClient::sendReq(const Msg &request, Msg &reply,
                        MsgDataContainer &replyData)
 {
+    auto reqFlow =
+        yarpl::flowable::Flowable<>::range(0, request._bufs.size())->map(
+            [&request](int64_t idx) {
+            const auto &buf = request._bufs[idx];
+            // wrapBuffer() is zero copy (vs. copyBuffer())
+            return rsocket::Payload(folly::IOBuf::wrapBuffer(buf._addr,
+                                                             buf._len));
+        });
+
+    auto requester = _client->getRequester();
+    auto reqChannel = requester->requestChannel(reqFlow);
+    reqChannel->subscribe([](rsocket::Payload p) {});
 }
 
 }

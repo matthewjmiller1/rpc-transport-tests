@@ -38,6 +38,16 @@ For example, to run with more verbose logging:
 rt_server -v 3
 ```
 
+### Workloads
+The client/server support three types of simulated workloads.
+* __Write (```--workload write```):__ The client sends bulk data to the server
+and the server just acknowledges when the bulk data has finished.
+* __Read (```--workload read```):__ The client sends a request to the
+server and it replies with the requested amount of bulk data.
+* __Echo (```--workload echo```):__ The client sends bulk data to the server
+and the server echoes the data back to the client. This can be used for
+verification.
+
 ### grpc Transport Test
 In the server terminal:
 ```

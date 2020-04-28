@@ -7,6 +7,7 @@ find_package(gflags REQUIRED)
 find_package(glog REQUIRED)
 find_package(gRPC REQUIRED)
 find_package(folly REQUIRED)
+find_package(OpenSSL REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system thread filesystem regex context
   program_options)
@@ -28,8 +29,11 @@ set(RSOCKET_LIBS
   ${DOUBLE-CONVERSION}
   event
   iberty
+  atomic
   ${CMAKE_DL_LIBS}
   yarpl
+  ${OPENSSL_SSL_LIBRARY}
+  ${OPENSSL_CRYPTO_LIBRARY}
   glog::glog
   gflags)
 
