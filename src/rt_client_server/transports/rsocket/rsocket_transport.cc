@@ -52,8 +52,8 @@ RsocketServer::Handler::handleRequestChannel(rsocket::Payload initialPayload,
     return yarpl::flowable::Flowable<>::range(0, sndMsg._bufs.size())->map(
         [&sndMsg](int64_t idx) {
         const auto &buf = sndMsg._bufs[idx];
-        // XXX: see if there's a way to do this zero-copy
-        return rsocket::Payload(folly::IOBuf::copyBuffer(buf._addr, buf._len));
+        // wrapBuffer() is zero copy (vs. copyBuffer())
+        return rsocket::Payload(folly::IOBuf::wrapBuffer(buf._addr, buf._len));
     });
 }
 
