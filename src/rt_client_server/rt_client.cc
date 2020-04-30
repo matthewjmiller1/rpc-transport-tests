@@ -124,6 +124,8 @@ EchoReqPayloadCreator::fill(rt::MsgDataContainer &msgData,
 bool
 EchoReplyValidator::isValid(const rt::Msg &req, const rt::Msg &reply) const
 {
+    // TODO
+    return true;
     if (req._bufs.size() != reply._bufs.size()) {
         LOG(ERROR) << "req _bufs.size(" << req._bufs.size() <<
             " != reply _bufs.size(" << reply._bufs.size() << ")";
@@ -155,7 +157,9 @@ getRemoteProcessTimeUs(const rt::Msg &reply)
     uint64_t retVal = 0;
 
     if (reply._bufs.empty()) {
-        throw std::runtime_error("empty reply");
+        // TODO
+        // throw std::runtime_error("empty reply");
+        return 0;
     }
 
     std::string str(reinterpret_cast<char const*>(reply._bufs[0]._addr),
@@ -245,6 +249,8 @@ main(int argc, char **argv)
         VLOG(rt::ll::STRING_MEM) << "mem[0] " <<
             rt::DataBuf::bytesToHex(req._bufs[0]._addr, 1);
         transport->sendReq(req, reply, replyData);
+        // TODO
+        sleep(2);
         const auto end = std::chrono::steady_clock::now();
         const auto payloadBytes = (FLAGS_block_size * FLAGS_block_count);
         std::chrono::duration<double> delta = (end - start);
