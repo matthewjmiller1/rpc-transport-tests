@@ -8,8 +8,6 @@
 
 namespace rt {
 
-RcvFn GrpcServer::_globalRcvFn;
-
 grpc::Status
 ReqReplyServiceImpl::ReqReply(grpc::ServerContext *context,
     grpc::ServerReaderWriter<grpc_transport::Msg, grpc_transport::Msg> *stream)
@@ -17,7 +15,7 @@ ReqReplyServiceImpl::ReqReply(grpc::ServerContext *context,
     auto retVal = grpc::Status::OK;
     grpc_transport::Msg req;
     rt::Msg rcvMsg, sndMsg;
-    auto rcvFn = GrpcServer::getRcvFn();
+    auto rcvFn = Server::getRcvFn();
     rt::MsgDataContainer reqData, rspData;
 
     while (stream->Read(&req)) {
@@ -62,14 +60,8 @@ ReqReplyServiceImpl::ReqReply(grpc::ServerContext *context,
     return retVal;
 }
 
-RcvFn
-GrpcServer::getRcvFn()
-{
-    return _globalRcvFn;
-}
-
-GrpcServer::GrpcServer(std::string address, uint16_t port, RcvFn rcvFn) :
-    Server(address, port, rcvFn)
+GrpcServer::GrpcServer(std::string address, uint16_t port) :
+    Server(address, port)
 {
     const auto portStr = std::to_string(port);
     if (address == "::") {
@@ -78,9 +70,6 @@ GrpcServer::GrpcServer(std::string address, uint16_t port, RcvFn rcvFn) :
     }
     const auto serverAddress = address + ":" + portStr;
     grpc::ServerBuilder builder;
-
-    // XXX: make MP safe, if needed.
-    _globalRcvFn = rcvFn;
 
     builder.AddListeningPort(serverAddress,
                              grpc::InsecureServerCredentials());

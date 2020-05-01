@@ -25,17 +25,21 @@ namespace rt {
                                MsgDataContainer &rspData)> RcvFn;
 
     struct Server {
-        explicit Server(std::string address, uint16_t port, RcvFn rcvFn);
+        explicit Server(std::string address, uint16_t port);
 
         virtual ~Server() = default;
 
         virtual void wait() = 0;
 
+        static void setRcvFn(RcvFn fn);
+        static RcvFn getRcvFn();
+
     protected:
 
         const std::string _address;
         const uint16_t _port;
-        const RcvFn _rcvFn;
+
+        static RcvFn _rcvFn;
     };
 
     struct Client {

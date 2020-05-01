@@ -15,8 +15,6 @@ namespace rt {
 
 typedef yarpl::flowable::Flowable<rsocket::Payload> FlowablePayload;
 
-RcvFn RsocketServer::_globalRcvFn;
-
 struct RsocketServer::Handler : public rsocket::RSocketResponder {
       std::shared_ptr<FlowablePayload>
       handleRequestChannel(rsocket::Payload initialPayload,
@@ -29,7 +27,7 @@ RsocketServer::Handler::handleRequestChannel(rsocket::Payload initialPayload,
     std::shared_ptr<FlowablePayload> request, rsocket::StreamId)
 {
     rt::Msg rcvMsg, sndMsg;
-    auto rcvFn = RsocketServer::getRcvFn();
+    auto rcvFn = Server::getRcvFn();
     auto cnt = 0;
     rt::MsgDataContainer reqData, rspData;
 
@@ -90,20 +88,11 @@ RsocketServer::Handler::handleRequestChannel(rsocket::Payload initialPayload,
     });
 }
 
-RcvFn
-RsocketServer::getRcvFn()
-{
-    return _globalRcvFn;
-}
-
-RsocketServer::RsocketServer(std::string address, uint16_t port, RcvFn rcvFn) :
-    Server(address, port, rcvFn)
+RsocketServer::RsocketServer(std::string address, uint16_t port) :
+    Server(address, port)
 {
     rsocket::TcpConnectionAcceptor::Options opts;
     opts.address = folly::SocketAddress(address.c_str(), port);
-
-    // XXX: make MP safe, if needed.
-    _globalRcvFn = rcvFn;
 
     _server = rsocket::RSocket::createServer(
         std::make_unique<rsocket::TcpConnectionAcceptor>(std::move(opts)));

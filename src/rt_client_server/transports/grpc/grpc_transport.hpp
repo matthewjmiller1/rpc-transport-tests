@@ -15,18 +15,14 @@ struct ReqReplyServiceImpl final :
 };
 
 struct GrpcServer final : public Server {
-    explicit GrpcServer(std::string address, uint16_t port, RcvFn rcvFn);
+    explicit GrpcServer(std::string address, uint16_t port);
 
     void wait() override;
-
-    static RcvFn getRcvFn();
 
 private:
 
     std::unique_ptr<grpc::Server> _server;
     ReqReplyServiceImpl _service;
-
-    static RcvFn _globalRcvFn;
 };
 
 struct GrpcClient final : public Client {

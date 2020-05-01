@@ -8,19 +8,15 @@
 namespace rt {
 
 struct RsocketServer final : public Server {
-    explicit RsocketServer(std::string address, uint16_t port, RcvFn rcvFn);
+    explicit RsocketServer(std::string address, uint16_t port);
 
     void wait() override;
-
-    static RcvFn getRcvFn();
 
 private:
 
     struct Handler;
 
     std::unique_ptr<rsocket::RSocketServer> _server;
-
-    static RcvFn _globalRcvFn;
 };
 
 struct RsocketClient final : public Client {

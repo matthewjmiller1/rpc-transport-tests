@@ -3,8 +3,8 @@
 
 namespace rt {
 
-NullServer::NullServer(std::string address, uint16_t port, RcvFn rcvFn) :
-    Server(address, port, rcvFn) {}
+NullServer::NullServer(std::string address, uint16_t port) :
+    Server(address, port) {}
 
 void
 NullServer::wait()

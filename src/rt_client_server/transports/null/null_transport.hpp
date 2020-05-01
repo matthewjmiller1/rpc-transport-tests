@@ -5,7 +5,7 @@
 namespace rt {
 
 struct NullServer final : public Server {
-    explicit NullServer(std::string address, uint16_t port, RcvFn rcvFn);
+    explicit NullServer(std::string address, uint16_t port);
 
     void wait() override;
 };

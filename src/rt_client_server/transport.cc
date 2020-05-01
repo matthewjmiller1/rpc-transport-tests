@@ -7,6 +7,8 @@
 
 namespace rt {
 
+RcvFn Server::_rcvFn = nullptr;
+
 const uint8_t *
 DataBuf::cStrToAddr(const char *cStr)
 {
@@ -27,8 +29,21 @@ DataBuf::bytesToHex(const uint8_t *buf, size_t len)
     return ss.str();
 }
 
-Server::Server(std::string address, uint16_t port, RcvFn rcvFn) :
-    _address(address), _port(port), _rcvFn(rcvFn) {}
+Server::Server(std::string address, uint16_t port) :
+    _address(address), _port(port) {}
+
+void
+Server::setRcvFn(RcvFn fn)
+{
+    // XXX: make MP safe, if needed.
+    _rcvFn = fn;
+}
+
+RcvFn
+Server::getRcvFn()
+{
+    return _rcvFn;
+}
 
 Client::Client(std::string serverAddress, uint16_t serverPort) :
     _serverAddress(serverAddress), _serverPort(serverPort) {}
