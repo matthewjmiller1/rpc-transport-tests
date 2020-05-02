@@ -4,6 +4,12 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV INSTALL_DIR=/usr/local
 ENV GRPC_VERSION=v1.28.1
 ENV CMAKE_VERSION=3.17.0
+# Flatbuffers only compiles with an older version of gRPC, hence
+# the reason we install an older version for flatbuffers to use.
+# https://github.com/google/flatbuffers/issues/5099
+# https://github.com/google/flatbuffers/issues/5836
+# https://github.com/google/flatbuffers/issues/5657
+# https://github.com/google/flatbuffers/issues/5443
 ENV GRPC_FB_VERSION=v1.15.1
 ENV GRPC_FB_INSTALL_DIR=$INSTALL_DIR/grpc_$GRPC_FB_VERSION
 
