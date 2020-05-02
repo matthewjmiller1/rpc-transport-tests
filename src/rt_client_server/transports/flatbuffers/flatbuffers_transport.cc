@@ -35,6 +35,39 @@ FlatbuffersServer::impl::ReqReplyServiceImpl::ReqReply(
 {
     // TODO
     auto retVal = grpc::Status::OK;
+    rt::Msg rcvMsg, sndMsg;
+    auto rcvFn = Server::getRcvFn();
+    rt::MsgDataContainer reqData, rspData;
+    flatbuffers::grpc::MessageBuilder mb;
+    flatbuffers::grpc::Message<fbs_transport::Msg> reqMsg;
+
+    while (stream->Read(&reqMsg)) {
+        const auto req = reqMsg.GetRoot();
+        // This makes a deep copy of the string's data
+        auto str = req->data()->str();
+        auto strP = std::make_unique<std::string>(std::move(str));
+        reqData.push_back(std::move(strP));
+        DataBuf buf;
+        buf._addr = rt::DataBuf::cStrToAddr(reqData.back()->data());
+        buf._len = reqData.back()->size();
+        rcvMsg._bufs.push_back(std::move(buf));
+    }
+
+    try {
+        rcvFn(rcvMsg, sndMsg, rspData);
+    } catch (const std::exception& e) {
+        std::cerr << "rcvFn exception: " << e.what() << std::endl;
+        std::abort();
+    }
+
+    for (const auto &buf : sndMsg._bufs) {
+        auto data = mb.CreateString(reinterpret_cast<const char *>(buf._addr),
+                                    buf._len);
+        auto rsp = fbs_transport::CreateMsg(mb, data);
+        mb.Finish(rsp);
+        stream->Write(mb.ReleaseMessage<fbs_transport::Msg>());
+    }
+
     return retVal;
 }
 
