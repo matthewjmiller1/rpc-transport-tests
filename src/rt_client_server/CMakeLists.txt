@@ -2,10 +2,18 @@ cmake_minimum_required(VERSION 3.17)
 
 project(rpc_transport)
 
+option(ENABLE_FLATBUFFERS "Enable build for flatbuffers" OFF)
+
+if (ENABLE_FLATBUFFERS)
+  add_definitions(-DENABLE_FLATBUFFERS)
+endif()
+
 find_package(Protobuf REQUIRED)
+if (NOT ENABLE_FLATBUFFERS)
+  find_package(gRPC REQUIRED)
+endif()
 find_package(gflags REQUIRED)
 find_package(glog REQUIRED)
-find_package(gRPC REQUIRED)
 find_package(folly REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(fmt CONFIG REQUIRED)
@@ -17,11 +25,17 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 add_compile_options(-Wall -Wextra -pedantic -Werror -Wno-unused-parameter)
 
-find_program(GRPC_CPP_PLUGIN_EXECUTABLE NAMES grpc_cpp_plugin)
-find_program(FBS_CMD NAMES flatc)
+
+if (ENABLE_FLATBUFFERS)
+  find_program(FBS_CMD NAMES flatc)
+else()
+  find_program(GRPC_CPP_PLUGIN_EXECUTABLE NAMES grpc_cpp_plugin)
+endif()
 find_library(DOUBLE-CONVERSION double-conversion)
 
-set(GRPC_LIBS gRPC::grpc++ gRPC::grpc++_reflection)
+if (NOT ENABLE_FLATBUFFERS)
+  set(GRPC_LIBS gRPC::grpc++ gRPC::grpc++_reflection)
+endif()
 
 set(RSOCKET_LIBS
   ReactiveSocket
@@ -48,11 +62,12 @@ list(APPEND TRANSPORT_HDRS transport.hpp payload_creator.hpp)
 add_library(transport STATIC transport.cc)
 target_include_directories(transport PUBLIC .)
 
-set(TRANSPORTS
-  null
-  grpc
-  rsocket
-  flatbuffers)
+set(TRANSPORTS null)
+if (NOT ENABLE_FLATBUFFERS)
+  list(APPEND TRANSPORTS grpc rsocket)
+else()
+  list(APPEND TRANSPORTS flatbuffers)
+endif()
 
 # Build libraries
 foreach(_target ${TRANSPORTS})
@@ -114,7 +129,7 @@ foreach(_target ${TRANSPORTS})
   target_include_directories(${TRANSPORT_BASE} PRIVATE ${TARGET_INCLUDE_DIRS})
   target_include_directories(${TRANSPORT_BASE} PUBLIC
     ${CMAKE_CURRENT_BINARY_DIR})
-  target_link_directories(${TRANSPORT_BASE} PRIVATE ${TARGET_LINK_DIRS})
+  target_link_directories(${TRANSPORT_BASE} PUBLIC ${TARGET_LINK_DIRS})
   target_link_libraries(${TRANSPORT_BASE} PRIVATE transport ${PROTO_LIBS}
     ${TARGET_LIBS})
   list(APPEND TRANSPORT_LIBS ${TRANSPORT_BASE})

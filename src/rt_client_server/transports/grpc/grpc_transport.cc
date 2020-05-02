@@ -3,13 +3,34 @@
 
 #include <string>
 
+#include <grpcpp/grpcpp.h>
+#include <grpc_transport.grpc.pb.h>
+
 #include <glog/logging.h>
 #include <log_levels.hpp>
 
 namespace rt {
 
+struct GrpcServer::impl final {
+    explicit impl(std::string address, uint16_t port);
+
+    std::unique_ptr<grpc::Server> _server;
+
+private:
+
+    struct ReqReplyServiceImpl final :
+        public grpc_transport::ReqReplyService::Service {
+
+        grpc::Status ReqReply(grpc::ServerContext *context,
+            grpc::ServerReaderWriter<grpc_transport::Msg,
+                                     grpc_transport::Msg> *stream) override;
+    };
+
+    ReqReplyServiceImpl _service;
+};
+
 grpc::Status
-ReqReplyServiceImpl::ReqReply(grpc::ServerContext *context,
+GrpcServer::impl::ReqReplyServiceImpl::ReqReply(grpc::ServerContext *context,
     grpc::ServerReaderWriter<grpc_transport::Msg, grpc_transport::Msg> *stream)
 {
     auto retVal = grpc::Status::OK;
@@ -60,8 +81,7 @@ ReqReplyServiceImpl::ReqReply(grpc::ServerContext *context,
     return retVal;
 }
 
-GrpcServer::GrpcServer(std::string address, uint16_t port) :
-    Server(address, port)
+GrpcServer::impl::impl(std::string address, uint16_t port)
 {
     const auto portStr = std::to_string(port);
     if (address == "::") {
@@ -82,14 +102,29 @@ GrpcServer::GrpcServer(std::string address, uint16_t port) :
     }
 }
 
+GrpcServer::GrpcServer(std::string address, uint16_t port) :
+    Server(address, port), _pImpl(std::make_unique<impl>(address, port))
+{}
+
+GrpcServer::~GrpcServer() = default;
+
 void
 GrpcServer::wait()
 {
-    _server->Wait();
+    _pImpl->_server->Wait();
 }
 
-GrpcClient::GrpcClient(std::string serverAddress, uint16_t serverPort) :
-    Client(serverAddress, serverPort)
+struct GrpcClient::impl final {
+    explicit impl(std::string serverAddress, uint16_t serverPort);
+
+    std::shared_ptr<grpc_transport::ReqReplyService::Stub> _stub;
+
+private:
+
+    std::shared_ptr<grpc::Channel> _channel;
+};
+
+GrpcClient::impl::impl(std::string serverAddress, uint16_t serverPort)
 {
     const auto portStr = std::to_string(serverPort);
     const auto serverUri = serverAddress + ":" + portStr;
@@ -106,12 +141,19 @@ GrpcClient::GrpcClient(std::string serverAddress, uint16_t serverPort) :
     }
 }
 
+GrpcClient::GrpcClient(std::string serverAddress, uint16_t serverPort) :
+    Client(serverAddress, serverPort),
+    _pImpl(std::make_unique<impl>(serverAddress, serverPort))
+{}
+
+GrpcClient::~GrpcClient() = default;
+
 void
 GrpcClient::sendReq(const Msg &request, Msg &reply, MsgDataContainer &replyData)
 {
     grpc::ClientContext context;
     std::unique_ptr<grpc::ClientReaderWriter<grpc_transport::Msg,
-        grpc_transport::Msg>> stream(_stub->ReqReply(&context));
+        grpc_transport::Msg>> stream(_pImpl->_stub->ReqReply(&context));
 
     const auto deadline = std::chrono::system_clock::now() +
         std::chrono::milliseconds(10000);

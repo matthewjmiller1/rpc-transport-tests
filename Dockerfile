@@ -159,6 +159,13 @@ RUN cmake ../..
 RUN make -j $(nproc)
 RUN cp rt_{client,server} /rpc_transport/bin/
 
+# Build rt_client_server for flatbuffers
+WORKDIR /rpc_transport/rt_client_server/cmake/fb_build
+RUN cmake -DENABLE_FLATBUFFERS=ON ../..
+RUN make -j $(nproc)
+RUN cp rt_client /rpc_transport/bin/fb_rt_client
+RUN cp rt_server /rpc_transport/bin/fb_rt_server
+
 # Set clang to the default compiler for development
 ENV CC=/usr/bin/clang
 ENV CXX=/usr/bin/clang++

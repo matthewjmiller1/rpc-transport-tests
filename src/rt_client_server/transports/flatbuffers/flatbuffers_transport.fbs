@@ -1,10 +1,9 @@
 namespace fbs_transport;
 
 table Msg {
-  data:[ubyte];
+  data:string;
 }
 
 rpc_service ReqReplyService {
-  // TODO: streaming client
-  ReqReply(Msg):Msg (streaming: "server");
+  ReqReply(Msg):Msg (streaming: "bidi");
 }

@@ -37,6 +37,7 @@
 
 # cmake
 build
+**/cmake/fb_build
 CMakeLists.txt.user
 CMakeCache.txt
 CMakeFiles
