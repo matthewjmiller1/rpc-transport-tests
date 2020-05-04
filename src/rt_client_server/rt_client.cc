@@ -281,6 +281,7 @@ main(int argc, char **argv)
 
     printStats("Throughput (Mbps)", tputAcc);
     printStats("Latency (ms)", latAcc);
+    std::cout << "Test passed" << std::endl;
 
     return 0;
 }
