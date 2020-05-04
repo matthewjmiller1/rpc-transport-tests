@@ -46,6 +46,7 @@ RUN apt-get update && \
     strace \
     gdb \
     git-all \
+    python3-pip \
     && rm -rf /var/lib/apt/lists/*
 
 SHELL ["/bin/bash", "-c"]
@@ -55,19 +56,10 @@ RUN wget -q -O cmake-linux.sh https://github.com/Kitware/CMake/releases/download
 RUN sh cmake-linux.sh -- --skip-license --prefix=$INSTALL_DIR
 RUN rm cmake-linux.sh
 
-WORKDIR /git_repos
-
-RUN git clone --recurse-submodules -b $GRPC_VERSION https://github.com/grpc/grpc
-RUN git clone --recurse-submodules -b $GRPC_FB_VERSION https://github.com/grpc/grpc grpc_$GRPC_FB_VERSION
-RUN git clone https://github.com/fmtlib/fmt.git
-RUN git clone https://github.com/facebook/folly.git
-RUN git clone https://github.com/rsocket/rsocket-cpp.git
-RUN git clone https://github.com/google/glog.git
-RUN git clone https://github.com/google/flatbuffers.git
-RUN git clone https://github.com/sandstorm-io/capnproto.git
-
 # Build/install grpc and all its dependencies based on:
 # https://grpc.io/docs/quickstart/cpp/
+WORKDIR /git_repos
+RUN git clone --recurse-submodules -b $GRPC_VERSION https://github.com/grpc/grpc
 WORKDIR /git_repos/grpc/cmake/build
 RUN cmake -DgRPC_INSTALL=ON \
     -DgRPC_BUILD_TESTS=OFF \
@@ -75,37 +67,52 @@ RUN cmake -DgRPC_INSTALL=ON \
     ../..
 RUN make -j $(nproc)
 RUN make install
+WORKDIR /
 
 # Build/install fmt required by folly based on:
 # https://github.com/facebook/folly
+WORKDIR /git_repos
+RUN git clone https://github.com/fmtlib/fmt.git
 WORKDIR /git_repos/fmt/_build
 RUN cmake -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR ..
 RUN make -j $(nproc)
 RUN make install
+WORKDIR /
 
 # Build/install folly required by rsocket-cpp based on:
 # https://github.com/facebook/folly
+WORKDIR /git_repos
+RUN git clone https://github.com/facebook/folly.git
 WORKDIR /git_repos/folly/_build
 RUN cmake -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR ..
 RUN make -j $(nproc)
 RUN make install
+WORKDIR /
 
 # Build/install glog required by rsocket-cpp based on:
 # https://github.com/google/glog/blob/master/cmake/INSTALL.md
+WORKDIR /git_repos
+RUN git clone https://github.com/google/glog.git
 WORKDIR /git_repos/glog
 RUN cmake -H. -Bbuild -G "Unix Makefiles"
 RUN cmake -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR --build build
 RUN cmake --build build --target install
+WORKDIR /
 
 # Build/install rsocket-cpp based on:
 # https://github.com/rsocket/rsocket-cpp
+WORKDIR /git_repos
+RUN git clone https://github.com/rsocket/rsocket-cpp.git
 WORKDIR /git_repos/rsocket-cpp/build
 RUN cmake -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR ..
 RUN make -j $(nproc)
 RUN make install
+WORKDIR /
 
 # Build/install grpc version needed for flatbuffers, loosely based on:
 # https://github.com/google/flatbuffers/tree/master/grpc
+WORKDIR /git_repos
+RUN git clone --recurse-submodules -b $GRPC_FB_VERSION https://github.com/grpc/grpc grpc_$GRPC_FB_VERSION
 WORKDIR /git_repos/grpc_$GRPC_FB_VERSION
 RUN make EXTRA_CXXFLAGS="-Wno-deprecated-declarations -Wno-unused-function" \
     -j $(nproc)
@@ -113,21 +120,28 @@ RUN mkdir -p $GRPC_FB_INSTALL_DIR
 RUN make prefix=$GRPC_FB_INSTALL_DIR install
 RUN ln -s ${GRPC_FB_INSTALL_DIR}/lib/libgrpc++_unsecure.so.6 ${GRPC_FB_INSTALL_DIR}/lib/libgrpc++_unsecure.so.1
 ENV LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${GRPC_FB_INSTALL_DIR}/lib"
+WORKDIR /
 
 # Build/install flatbuffers based on:
 # https://google.github.io/flatbuffers/flatbuffers_guide_building.html
+WORKDIR /git_repos
+RUN git clone https://github.com/google/flatbuffers.git
 WORKDIR /git_repos/flatbuffers/_build
 RUN cmake -DCMAKE_INSTALL_PREFIX=$INSTALL_DIR ..
 RUN make -j $(nproc)
 RUN make install
+WORKDIR /
 
 # Build/install capnproto based on:
 # https://capnproto.org/install.html
+WORKDIR /git_repos
+RUN git clone https://github.com/sandstorm-io/capnproto.git
 WORKDIR /git_repos/capnproto/c++
 RUN autoreconf -i
 RUN ./configure --prefix=$INSTALL_DIR
 RUN make -j $(nproc) check
 RUN make install
+WORKDIR /
 
 RUN mkdir -p /rpc_transport/bin
 RUN mkdir -p /rpc_transport/rt_client_server
@@ -172,10 +186,16 @@ RUN make -j $(nproc)
 RUN cp rt_client /rpc_transport/bin/fb_rt_client
 RUN cp rt_server /rpc_transport/bin/fb_rt_server
 
+RUN pip3 install numpy matplotlib
+
 # Set clang to the default compiler for development
 ENV CC=/usr/bin/clang
 ENV CXX=/usr/bin/clang++
 
 WORKDIR /
+
+# Uncomment this to remove the git repos if container image
+# size reduction is attempted via, e.g., Docker's --squash.
+#RUN rm -rf /git_repos
 
 CMD ["/bin/bash"]
