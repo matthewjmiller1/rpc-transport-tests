@@ -35,6 +35,10 @@
 *.swp
 *.swo
 
+# Core dumps
+core
+core.*
+
 # cmake
 build
 **/cmake/fb_build
