@@ -33,7 +33,6 @@ FlatbuffersServer::impl::ReqReplyServiceImpl::ReqReply(
         flatbuffers::grpc::Message<fbs_transport::Msg>,
         flatbuffers::grpc::Message<fbs_transport::Msg>> *stream)
 {
-    // TODO
     auto retVal = grpc::Status::OK;
     rt::Msg rcvMsg, sndMsg;
     auto rcvFn = Server::getRcvFn();
@@ -144,7 +143,47 @@ void
 FlatbuffersClient::sendReq(const Msg &request, Msg &reply,
                            MsgDataContainer &replyData)
 {
-    // TODO
+    grpc::ClientContext context;
+    flatbuffers::grpc::MessageBuilder mb;
+    std::unique_ptr<grpc::ClientReaderWriter<
+        flatbuffers::grpc::Message<fbs_transport::Msg>,
+        flatbuffers::grpc::Message<fbs_transport::Msg>>>
+            stream(_pImpl->_stub->ReqReply(&context));
+
+    const auto deadline = std::chrono::system_clock::now() +
+        std::chrono::milliseconds(10000);
+    context.set_deadline(deadline);
+
+    for (const auto &buf : request._bufs) {
+        auto data = mb.CreateString(reinterpret_cast<const char *>(buf._addr),
+                                    buf._len);
+        auto msg = fbs_transport::CreateMsg(mb, data);
+        mb.Finish(msg);
+        stream->Write(mb.ReleaseMessage<fbs_transport::Msg>());
+    }
+
+    stream->WritesDone();
+
+    flatbuffers::grpc::Message<fbs_transport::Msg> msg;
+    while (stream->Read(&msg)) {
+        const auto rsp = msg.GetRoot();
+        // This makes a deep copy of the string's data
+        auto str = rsp->data()->str();
+        auto strP = std::make_unique<std::string>(std::move(str));
+        replyData.push_back(std::move(strP));
+
+        DataBuf buf;
+        buf._addr = rt::DataBuf::cStrToAddr(replyData.back()->data());
+        buf._len = replyData.back()->size();
+        reply._bufs.push_back(std::move(buf));
+    }
+
+    const auto status = stream->Finish();
+    if (!status.ok()) {
+        throw std::runtime_error("send failed: (" +
+                                 std::to_string(status.error_code()) +
+                                 ") " + status.error_message());
+    }
 }
 
 }
