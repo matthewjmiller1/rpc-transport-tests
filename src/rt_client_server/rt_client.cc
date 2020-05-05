@@ -241,6 +241,7 @@ main(int argc, char **argv)
         return 1;
     }
 
+    std::cout << "Transport=" <<  FLAGS_transport << std::endl;
     std::cout << "Sending " <<  FLAGS_op_count << " " << FLAGS_workload <<
         " op(s), each for " << FLAGS_block_count << " blocks of size " <<
         FLAGS_block_size << " bytes" << std::endl;
