@@ -1,17 +1,19 @@
 #pragma once
 
 #include <transport.hpp>
+#include <memory>
 
 namespace rt {
 
 /*
  * XXX: use PIMPL to avoid including gRPC headers here which are of a
- * different version than what the flatbuffers_transport uses.
+ * different version than what the grpc_transport uses.
  */
 
-struct GrpcServer final : public Server {
-    explicit GrpcServer(std::string address, uint16_t port);
-    ~GrpcServer();
+struct FlatbuffersServer final : public Server {
+    explicit FlatbuffersServer(std::string address, uint16_t port);
+
+    ~FlatbuffersServer();
 
     void wait() override;
 
@@ -21,9 +23,9 @@ private:
     std::unique_ptr<impl> _pImpl;
 };
 
-struct GrpcClient final : public Client {
-    explicit GrpcClient(std::string serverAddress, uint16_t serverPort);
-    ~GrpcClient();
+struct FlatbuffersClient final : public Client {
+    explicit FlatbuffersClient(std::string serverAddress, uint16_t serverPort);
+    ~FlatbuffersClient();
 
     void sendReq(const Msg &request, Msg &reply,
                  MsgDataContainer &replyData) override;
@@ -35,3 +37,4 @@ private:
 };
 
 }
+

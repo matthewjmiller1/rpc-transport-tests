@@ -111,25 +111,65 @@ HelloRequestResponseRequestResponder.handleRequestResponse Metadata(0): <null>, 
 ### grpc Hello World
 In the server terminal:
 ```
-greeter_server
+grpc_test_server
 ```
 
 To verify the server is running as expected, on the host machine you should see
 port 50051 listening:
 ```
 $ sudo netstat -npatl | grep :50051
-tcp6       0      0 :::50051                :::*                    LISTEN      5363/greeter_server
+tcp6       0      0 :::50051                :::*                    LISTEN      5363/grpc_test_server
 $
 ```
 
 In the client terminal
 ```
-greeter_client
+grpc_test_client
 ```
 
 On the client, you should see:
 ```
 Greeter received: Hello world
+```
+
+On the server, you should see:
+```
+Server listening on 0.0.0.0:50051
+```
+
+### flatbuffers Hello World
+In the server terminal:
+```
+flatbuffers_test_server
+```
+
+To verify the server is running as expected, on the host machine you should see
+port 50051 listening:
+```
+$ sudo netstat -npatl | grep :50051
+tcp6       0      0 :::50051                :::*                    LISTEN
+5363/flatbuffers_test_server
+$
+```
+
+In the client terminal
+```
+flatbuffers_test_client
+```
+
+On the client, you should see:
+```
+Greeter received: Hello, world
+Greeter received: Many hellos, world
+Greeter received: Many hellos, world
+Greeter received: Many hellos, world
+Greeter received: Many hellos, world
+Greeter received: Many hellos, world
+Greeter received: Many hellos, world
+Greeter received: Many hellos, world
+Greeter received: Many hellos, world
+Greeter received: Many hellos, world
+Greeter received: Many hellos, world
 ```
 
 On the server, you should see:

@@ -35,14 +35,19 @@
 *.swp
 *.swo
 
+# Core dumps
+core
+core.*
+
 # cmake
 build
+**/cmake/fb_build
+src/rt_client_server/cmake
 CMakeLists.txt.user
 CMakeCache.txt
 CMakeFiles
 CMakeScripts
 Testing
-Makefile
 cmake_install.cmake
 install_manifest.txt
 compile_commands.json

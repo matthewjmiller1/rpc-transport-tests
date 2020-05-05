@@ -1,6 +1,10 @@
 #include <transports/null/null_transport.hpp>
+#ifdef ENABLE_FLATBUFFERS
+#include <transports/flatbuffers/flatbuffers_transport.hpp>
+#else /* !ENABLE_FLATBUFFERS */
 #include <transports/grpc/grpc_transport.hpp>
 #include <transports/rsocket/rsocket_transport.hpp>
+#endif /* ENABLE_FLATBUFFERS */
 #include "payload_creator.hpp"
 
 #include <memory>
@@ -207,15 +211,19 @@ main(int argc, char **argv)
         return 1;
     }
 
+    rt::Server::setRcvFn(ServerRcvFn);
+
     if (FLAGS_transport.find("null") != std::string::npos) {
-        transport = std::make_unique<rt::NullServer>(addr, FLAGS_port,
-                                                     ServerRcvFn);
+        transport = std::make_unique<rt::NullServer>(addr, FLAGS_port);
+#ifdef ENABLE_FLATBUFFERS
+    } else if (FLAGS_transport.find("flatbuffers") != std::string::npos) {
+        transport = std::make_unique<rt::FlatbuffersServer>(addr, FLAGS_port);
+#else /* !ENABLE_FLATBUFFERS */
     } else if (FLAGS_transport.find("grpc") != std::string::npos) {
-        transport = std::make_unique<rt::GrpcServer>(addr, FLAGS_port,
-                                                     ServerRcvFn);
+        transport = std::make_unique<rt::GrpcServer>(addr, FLAGS_port);
     } else if (FLAGS_transport.find("rsocket") != std::string::npos) {
-        transport = std::make_unique<rt::RsocketServer>(addr, FLAGS_port,
-                                                        ServerRcvFn);
+        transport = std::make_unique<rt::RsocketServer>(addr, FLAGS_port);
+#endif /* ENABLE_FLATBUFFERS */
     } else {
         std::cerr << "Unknown transport: " << FLAGS_transport << std::endl;
         return 1;
