@@ -42,6 +42,7 @@ core.*
 # cmake
 build
 **/cmake/fb_build
+src/rt_client_server/cmake
 CMakeLists.txt.user
 CMakeCache.txt
 CMakeFiles
