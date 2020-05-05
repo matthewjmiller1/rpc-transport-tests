@@ -46,10 +46,13 @@ RUN apt-get update && \
     strace \
     gdb \
     git-all \
+    python3.8 \
     python3-pip \
     && rm -rf /var/lib/apt/lists/*
 
 SHELL ["/bin/bash", "-c"]
+
+RUN python3.8 -m pip install numpy matplotlib
 
 # Get/install the version of cmake grpc requires
 RUN wget -q -O cmake-linux.sh https://github.com/Kitware/CMake/releases/download/v$CMAKE_VERSION/cmake-$CMAKE_VERSION-Linux-x86_64.sh
@@ -185,8 +188,6 @@ RUN cmake -DENABLE_FLATBUFFERS=ON ../..
 RUN make -j $(nproc)
 RUN cp rt_client /rpc_transport/bin/fb_rt_client
 RUN cp rt_server /rpc_transport/bin/fb_rt_server
-
-RUN pip3 install numpy matplotlib
 
 # Set clang to the default compiler for development
 ENV CC=/usr/bin/clang
