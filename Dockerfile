@@ -189,6 +189,8 @@ RUN make -j $(nproc)
 RUN cp rt_client /rpc_transport/bin/fb_rt_client
 RUN cp rt_server /rpc_transport/bin/fb_rt_server
 
+ENV PATH="${PATH}:."
+
 # Set clang to the default compiler for development
 ENV CC=/usr/bin/clang
 ENV CXX=/usr/bin/clang++

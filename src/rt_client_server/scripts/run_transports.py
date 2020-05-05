@@ -3,12 +3,25 @@
 Run transport test for the give parameters and graph results.
 """
 
-import numpy as np
 import matplotlib.pyplot as plt
 import argparse
 import subprocess
 import tempfile
 import re
+
+class Stats:
+    def __init__(self):
+        self.block_count = None
+        self.block_size = None
+        self.tput_avg = None
+        self.tput_dev = None
+        self.lat_avg = None
+        self.lat_dev = None
+
+    def __repr__(self):
+        return (f"block (count={self.block_count}, size={self.block_size}), "
+                f"tput (avg={self.tput_avg}, dev={self.tput_dev}), "
+                f"lat (avg={self.lat_avg}, dev={self.lat_dev})")
 
 class Env:
 
@@ -33,6 +46,9 @@ class Env:
 
         return prog
 
+    def client_file(self, out_dir, transport):
+        return f"{out_dir}/client_out_{transport}.txt"
+
     def start_server(self, transport):
         cmd = [self.server_prog(transport), "--transport", transport]
         if (self.args.do_debug):
@@ -49,7 +65,7 @@ class Env:
             print(f'Running client command:\n  {" ".join(cmd)}')
 
         test_passed = False
-        fname = f"{out_dir}/echo_out.txt"
+        fname = self.client_file(out_dir, "echo")
         with open(fname, 'w+') as f:
             run = subprocess.run(cmd, stdout=f, stderr=f)
 
@@ -75,7 +91,7 @@ class Env:
                     print(f'Running client command:\n  {" ".join(cmd)}')
 
                 test_passed = False
-                fname = f"{out_dir}/client_out_{transport}.txt"
+                fname = self.client_file(out_dir, transport)
                 with open(fname, 'a+') as f:
                     run = subprocess.run(cmd, stdout=f, stderr=f)
 
@@ -97,17 +113,119 @@ class Env:
     def run_tests(self, out_dir):
         for t in self.args.transports:
             p = self.start_server(t)
-            self.run_client(t, out_dir)
-            self.stop_server(p)
+            try:
+                self.run_client(t, out_dir)
+            finally:
+                self.stop_server(p)
+
+    def parse_file(self, fname):
+        re_header = re.compile(r'.* for (\d+) blocks of size (\d+) .*')
+        re_tput = re.compile(r'Throughput.* avg=(\d+\.\d+) dev=(\d+\.\d+) .*') 
+        re_lat = re.compile(r'Latency.* avg=(\d+\.\d+) dev=(\d+\.\d+) .*') 
+        re_passed = re.compile(r'Test passed') 
+
+        bc_is_key = len(self.args.block_count) > 1
+
+        stats = {}
+        with open(fname, 'r') as f:
+            s = None
+            for line in f:
+                m = re_header.match(line)
+                if m:
+                    s = Stats()
+                    (s.block_count, s.block_size) = \
+                        tuple(float(i) for i in m.group(1, 2))
+
+                m = re_tput.match(line)
+                if m:
+                    (s.tput_avg, s.tput_dev) = \
+                        tuple(float(i) for i in m.group(1, 2))
+
+                m = re_lat.match(line)
+                if m:
+                    (s.lat_avg, s.lat_dev) = \
+                        tuple(float(i) for i in m.group(1, 2))
+
+                m = re_passed.search(line)
+                if m:
+                    if (bc_is_key):
+                        stats[s.block_count] = s
+                    else:
+                        stats[s.block_size] = s
+                    s = None
+
+        return stats
+
+    def generate_graphs(self, out_dir):
+        transport_data = {}
+        for t in self.args.transports:
+            fname = self.client_file(out_dir, t)
+            transport_data[t] = self.parse_file(fname)
+
+        if (self.args.do_debug):
+            print(f"Transport data: {transport_data}")
+
+        bc_is_x = len(self.args.block_count) > 1
+        if (bc_is_x):
+            title_substr = f"block size={self.args.block_size[0]} bytes"
+            xlabel = "block count/op"
+        else:
+            title_substr = f"block count/op={self.args.block_count[0]}"
+            xlabel = "block size (bytes)"
+
+        title = (f"{self.args.workload}, {title_substr}, "
+                 f"N={self.args.op_count}")
+
+        fig, axs = plt.subplots(2)
+        axs[0].set(title="Throughput", xlabel=xlabel,
+                   ylabel="Throughput (Mbps)")
+        axs[1].set(title="Latency", xlabel=xlabel, ylabel="Latency (ms)")
+
+        for (k1, v1) in sorted(transport_data.items()):
+            y_vals = []
+            e_vals = []
+            y_vals.extend([[], []])
+            e_vals.extend([[], []])
+            x_vals = sorted(list(v1.keys()))
+
+            for (k2, v2) in sorted(v1.items()):
+                y_vals[0].append(v2.tput_avg)
+                e_vals[0].append(v2.tput_dev)
+                y_vals[1].append(v2.lat_avg)
+                e_vals[1].append(v2.lat_dev)
+
+            for (i, ax) in enumerate(axs):
+                if (self.args.do_debug):
+                    print(x_vals)
+                    print(y_vals[i])
+                    print(e_vals[i])
+                ax.errorbar(x_vals, y_vals[i], e_vals[i], capsize=5, fmt="o-",
+                            label=k1)
+
+        # Do these after all the data is plotted
+        for ax in axs:
+            ax.set_ylim(bottom=0)
+            ax.legend()
+
+        # Set a title for both subplots
+        st = fig.suptitle(title)
+
+        fig.tight_layout()
+
+        # Shift subplots down to avoid overlapping with master title
+        st.set_y(0.95)
+        fig.subplots_adjust(top=0.85)
+
+        plt.savefig(f"{out_dir}/transport_data.png")
 
     def run_transports(self):
-        dir = tempfile.mkdtemp(dir="/tmp")
+        dir = tempfile.mkdtemp(dir=self.args.out_dir)
 
         self.run_echo_test(dir)
         self.run_tests(dir)
+        self.generate_graphs(dir)
 
-        if (self.args.delete_temp):
-            shutil.rmtree(dirpath)
+        print(f"  Output is in {dir}/")
 
     def create_parser(self):
         parser = argparse.ArgumentParser(description="""
@@ -116,12 +234,14 @@ class Env:
                                          formatter_class=
                                          argparse.ArgumentDefaultsHelpFormatter)
 
-        parser.add_argument("--debug", dest="do_debug",
+        parser.add_argument("-d", "--debug", dest="do_debug",
                             action="store_true", default=False,
                             help="""Show debugging info.""")
-        parser.add_argument("--delete-temp", dest="delete_temp",
-                            action="store_true", default=False,
-                            help="""Delete temp files for run""")
+
+        parser.add_argument("--out-directory", dest="out_dir",
+                            default="/tmp",
+                            help="""Directory for output""")
+
         parser.add_argument("-o", "--op-count", dest="op_count",
                             default=35,
                             help="""Ops to run per value""")
