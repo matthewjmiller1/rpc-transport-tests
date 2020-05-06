@@ -177,6 +177,40 @@ On the server, you should see:
 Server listening on 0.0.0.0:50051
 ```
 
+### Cap'n Proto Hello World
+In the server terminal (pick any unused port):
+```
+capnproto_test_server localhost:54321
+```
+
+To verify the server is running as expected, on the host machine you should see
+port 54321 listening:
+```
+$ sudo netstat -npatl | grep :54321
+tcp6       0      0 ::1:54321               :::*                    LISTEN      18923/capnproto_tes
+$
+```
+
+In the client terminal
+```
+capnproto_test_client localhost:54321
+```
+
+On the client, you should see:
+```
+Evaluating a literal... PASS
+Using add and subtract... PASS
+Pipelining eval() calls... PASS
+Defining functions... PASS
+Using a callback... PASS
+```
+
+On the server, you should see:
+```
+kj/async-io-unix.c++:1278: warning: Bind address resolved to multiple addresses.  Only the first address will be used.  If this is incorrect, specify the address numerically.  This may be fixed in the future.; addrs[0].toString() = [::1]:54321
+Listening on port 54321...
+```
+
 ## Running the Container for Building
 To run the container so you can build the code:
 ```
