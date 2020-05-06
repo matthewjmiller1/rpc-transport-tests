@@ -187,4 +187,3 @@ FlatbuffersClient::sendReq(const Msg &request, Msg &reply,
 }
 
 }
-

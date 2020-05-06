@@ -20,6 +20,7 @@ find_package(fmt CONFIG REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system thread filesystem regex context
   program_options)
 find_package(yarpl REQUIRED)
+find_package(CapnProto CONFIG REQUIRED)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
@@ -64,7 +65,7 @@ target_include_directories(transport PUBLIC .)
 
 set(TRANSPORTS null)
 if (NOT ENABLE_FLATBUFFERS)
-  list(APPEND TRANSPORTS grpc rsocket)
+  list(APPEND TRANSPORTS grpc rsocket capnproto)
 else()
   list(APPEND TRANSPORTS flatbuffers)
 endif()
@@ -102,7 +103,6 @@ foreach(_target ${TRANSPORTS})
     list(APPEND TARGET_LINK_DIRS "/usr/local/grpc_v1.15.1/lib")
     get_filename_component(FBS_FILE
       "transports/${_target}/${TRANSPORT_BASE}.fbs" ABSOLUTE)
-    get_filename_component(FBS_PATH "${FBS_FILE}" PATH)
     list(APPEND TARGET_LIBS ${FBS_LIBS})
     set(FBS_SRCS "${CMAKE_CURRENT_BINARY_DIR}/${TRANSPORT_BASE}.grpc.fb.cc")
     set(FBS_HDRS
@@ -120,6 +120,15 @@ foreach(_target ${TRANSPORTS})
 
   if ("${_target}" STREQUAL "rsocket")
     list(APPEND TARGET_LIBS ${RSOCKET_LIBS})
+  endif()
+
+  if ("${_target}" STREQUAL "capnproto")
+    get_filename_component(CAPNP_FILE
+      "transports/${_target}/${TRANSPORT_BASE}.capnp" ABSOLUTE)
+    capnp_generate_cpp(CAPNP_SRCS CAPNP_HDRS ${CAPNP_FILE})
+    list(APPEND GEN_SRCS ${CAPNP_SRCS})
+    list(APPEND GEN_HDRS ${CAPNP_HDRS})
+    list(APPEND TARGET_LIBS CapnProto::capnp-rpc)
   endif()
 
   add_library(${_target}_transport STATIC
