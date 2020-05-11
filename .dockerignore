@@ -1,3 +1,4 @@
 src/transport_hello_world/*/cmake
+src/transport_hello_world/*/*/cmake
 src/rt_client_server/cmake
 core.*
