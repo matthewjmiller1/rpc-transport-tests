@@ -63,7 +63,6 @@ struct StreamServiceImpl final : public StreamService::Server {
 int
 main(int argc, const char* argv[])
 {
-
     capnp::EzRpcServer server(kj::heap<StreamServiceImpl>(), "localhost:54321");
 
     auto& waitScope = server.getWaitScope();
