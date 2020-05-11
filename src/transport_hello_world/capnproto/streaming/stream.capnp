@@ -6,6 +6,11 @@ interface StreamService {
 
   interface RequestCallback {
     sendChunk @0 (chunk :Text) -> stream;
+    done @1 (replySvc :ReplyCallback) -> ();
+  }
+
+  interface ReplyCallback {
+    sendChunk @0 (chunk :Text) -> stream;
     done @1 ();
   }
 }

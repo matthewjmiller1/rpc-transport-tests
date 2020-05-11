@@ -5,12 +5,13 @@
 #include <iostream>
 #include <vector>
 
-struct ReqSvcImpl final: public StreamService::RequestCallback::Server {
+struct ReqSvcImpl final : public StreamService::RequestCallback::Server {
+
     kj::Promise<void>
     sendChunk(SendChunkContext context) override
     {
         auto chunk = context.getParams().getChunk();
-        std::cout << "Received \"" << chunk.cStr() << "\"" << std::endl;
+        std::cout << "Server received \"" << chunk.cStr() << "\"" << std::endl;
         _vec.push_back(std::string(chunk.cStr()));
         return kj::READY_NOW;
     }
@@ -18,19 +19,39 @@ struct ReqSvcImpl final: public StreamService::RequestCallback::Server {
     kj::Promise<void>
     done(DoneContext context) override
     {
-        std::cout << "done called:" << std::endl;
+        std::cout << "Server done called:" << std::endl;
         for (const auto str : _vec) {
             std::cout << "  " << str << std::endl;
         }
-        return kj::READY_NOW;
+
+        auto replySvc = context.getParams().getReplySvc();
+
+        return sendStrings(replySvc, _vec, 0);
     }
 
 private:
 
+    static kj::Promise<void>
+    sendStrings(StreamService::ReplyCallback::Client stream,
+                const std::vector<std::string> &vec, uint32_t strNum)
+    {
+        if (strNum == vec.size()) {
+            return stream.doneRequest().send().ignoreResult();
+        }
+
+        auto chunkReq = stream.sendChunkRequest();
+        chunkReq.setChunk(vec[strNum].c_str());
+        return chunkReq.send().then([stream=kj::mv(stream),
+                                    strNum, &vec]() mutable {
+                return sendStrings(kj::mv(stream), vec, strNum + 1);
+            });
+    }
+
     std::vector<std::string> _vec;
 };
 
-struct StreamServiceImpl final: public StreamService::Server {
+struct StreamServiceImpl final : public StreamService::Server {
+
     kj::Promise<void>
     reqReply(ReqReplyContext context) override
     {

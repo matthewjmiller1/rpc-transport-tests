@@ -168,7 +168,6 @@ RUN cp rsocket_test_{client,server} /rpc_transport/bin/
 # Build flatbuffers hello world
 COPY src/transport_hello_world/flatbuffers \
     /rpc_transport/hello_world/flatbuffers
-WORKDIR /rpc_transport/hello_world/flatbuffers
 WORKDIR /rpc_transport/hello_world/flatbuffers/cmake/build
 RUN cmake ../..
 RUN make -j $(nproc)
@@ -178,12 +177,17 @@ RUN cp server /rpc_transport/bin/flatbuffers_test_server
 # Build capnproto hello world
 COPY src/transport_hello_world/capnproto \
     /rpc_transport/hello_world/capnproto
-WORKDIR /rpc_transport/hello_world/capnproto
 WORKDIR /rpc_transport/hello_world/capnproto/cmake/build
 RUN cmake ../..
 RUN make -j $(nproc)
 RUN cp calculator-client /rpc_transport/bin/capnproto_test_client
 RUN cp calculator-server /rpc_transport/bin/capnproto_test_server
+# Build capnproto streaming example
+WORKDIR /rpc_transport/hello_world/capnproto/streaming/cmake/build
+RUN cmake ../..
+RUN make -j $(nproc)
+RUN cp client /rpc_transport/bin/capnproto_test_stream_client
+RUN cp server /rpc_transport/bin/capnproto_test_stream_server
 
 # Build rt_client_server
 COPY src/rt_client_server /rpc_transport/rt_client_server
