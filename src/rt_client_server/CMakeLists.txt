@@ -125,6 +125,7 @@ foreach(_target ${TRANSPORTS})
   if ("${_target}" STREQUAL "capnproto")
     get_filename_component(CAPNP_FILE
       "transports/${_target}/${TRANSPORT_BASE}.capnp" ABSOLUTE)
+    get_filename_component(CAPNPC_SRC_PREFIX "${CAPNP_FILE}" PATH)
     capnp_generate_cpp(CAPNP_SRCS CAPNP_HDRS ${CAPNP_FILE})
     list(APPEND GEN_SRCS ${CAPNP_SRCS})
     list(APPEND GEN_HDRS ${CAPNP_HDRS})
