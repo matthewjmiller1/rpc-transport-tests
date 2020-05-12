@@ -6,8 +6,9 @@ Run transport test for the give parameters and graph results.
 import matplotlib.pyplot as plt
 import argparse
 import subprocess
-import tempfile
+import os
 import re
+import datetime
 
 class Stats:
     def __init__(self):
@@ -32,6 +33,8 @@ class Env:
             len(self.args.block_size) != 1):
             raise RuntimeError("block count or block size must be one")
 
+        self.file_prefix = self.get_file_prefix();
+
     def server_prog(self, transport):
         prog = "rt_server"
         if transport == "flatbuffers":
@@ -54,6 +57,20 @@ class Env:
         if (self.args.do_debug):
             print(f'Running server command:\n  {" ".join(cmd)}')
         return subprocess.Popen(cmd)
+
+    def get_file_prefix(self):
+        bc_is_key = len(self.args.block_count) > 1
+
+        key_string = "count" if bc_is_key else "size"
+        key_list = self.args.block_count if bc_is_key else self.args.block_size 
+        key_list.sort(key=lambda x: int(x))
+        key_start = key_list[0]
+        key_end = key_list[-1]
+        now = datetime.datetime.now()
+        tstamp = f"{now:%Y%m%d_%H%M%S}"
+
+        return (f"{self.args.workload}_{key_string}_{key_start}"
+                f"_{key_end}_{tstamp}")
 
     def run_echo_client(self, transport, out_dir):
         """Sanity test that echo works for transport"""
@@ -216,10 +233,11 @@ class Env:
         st.set_y(0.95)
         fig.subplots_adjust(top=0.85)
 
-        plt.savefig(f"{out_dir}/transport_data.png")
+        plt.savefig(f"{out_dir}/{self.file_prefix}.png")
 
     def run_transports(self):
-        dir = tempfile.mkdtemp(dir=self.args.out_dir)
+        dir = os.path.join(self.args.out_dir, self.file_prefix)
+        os.makedirs(dir)
 
         self.run_echo_test(dir)
         self.run_tests(dir)
@@ -260,7 +278,7 @@ class Env:
                             Allowed values are: {}.""". \
                             format(", ".join(workloads)))
 
-        transports = ["grpc", "flatbuffers"]
+        transports = ["grpc", "flatbuffers", "capnproto"]
         parser.add_argument("-t", "--transports", dest="transports",
                             metavar="transports", default=[transports[0]],
                             choices=transports, nargs="+",

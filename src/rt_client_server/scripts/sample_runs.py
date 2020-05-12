@@ -8,7 +8,7 @@ class Env:
     def __init__(self):
         self.args = self.create_parser().parse_args()
         self.workloads = ["write", "read"]
-        self.transports = ["grpc", "flatbuffers"]
+        self.transports = ["grpc", "flatbuffers", "capnproto"]
 
         self.block_sizes = []
         self.block_sizes.append([2**v for v in range(6, 12)])
@@ -22,7 +22,7 @@ class Env:
         for w in self.workloads:
             for ranges in self.block_sizes:
                 cmd = ["run_transports.py", "--out-directory",
-                       self.args.out_dir, "-w", w, "-t"]
+                       self.args.out_dir, "-w", w, "-o", "50", "-t"]
                 cmd.extend(self.transports)
                 cmd.append("-s")
                 cmd.extend([str(v) for v in ranges])
@@ -34,7 +34,7 @@ class Env:
         for w in self.workloads:
             for ranges in self.block_counts:
                 cmd = ["run_transports.py", "--out-directory",
-                       self.args.out_dir, "-w", w, "-t"]
+                       self.args.out_dir, "-w", w, "-o", "50", "-t"]
                 cmd.extend(self.transports)
                 cmd.append("-c")
                 cmd.extend([str(v) for v in ranges])
