@@ -27,7 +27,7 @@ RsocketServer::Handler::handleRequestChannel(rsocket::Payload initialPayload,
     std::shared_ptr<FlowablePayload> request, rsocket::StreamId)
 {
     rt::Msg rcvMsg, sndMsg;
-    auto rcvFn = Server::getRcvFn();
+    auto rcvFn = getRcvFn();
     auto cnt = 0;
     rt::MsgDataContainer reqData, rspData;
 

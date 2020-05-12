@@ -36,7 +36,7 @@ GrpcServer::impl::ReqReplyServiceImpl::ReqReply(grpc::ServerContext *context,
     auto retVal = grpc::Status::OK;
     grpc_transport::Msg req;
     rt::Msg rcvMsg, sndMsg;
-    auto rcvFn = Server::getRcvFn();
+    auto rcvFn = getRcvFn();
     rt::MsgDataContainer reqData, rspData;
 
     while (stream->Read(&req)) {

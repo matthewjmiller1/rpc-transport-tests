@@ -35,7 +35,7 @@ FlatbuffersServer::impl::ReqReplyServiceImpl::ReqReply(
 {
     auto retVal = grpc::Status::OK;
     rt::Msg rcvMsg, sndMsg;
-    auto rcvFn = Server::getRcvFn();
+    auto rcvFn = getRcvFn();
     rt::MsgDataContainer reqData, rspData;
     flatbuffers::grpc::MessageBuilder mb;
     flatbuffers::grpc::Message<fbs_transport::Msg> reqMsg;
