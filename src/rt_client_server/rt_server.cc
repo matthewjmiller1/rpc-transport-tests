@@ -4,6 +4,7 @@
 #else /* !ENABLE_FLATBUFFERS */
 #include <transports/grpc/grpc_transport.hpp>
 #include <transports/rsocket/rsocket_transport.hpp>
+#include <transports/capnproto/capnproto_transport.hpp>
 #endif /* ENABLE_FLATBUFFERS */
 #include "payload_creator.hpp"
 
@@ -223,6 +224,8 @@ main(int argc, char **argv)
         transport = std::make_unique<rt::GrpcServer>(addr, FLAGS_port);
     } else if (FLAGS_transport.find("rsocket") != std::string::npos) {
         transport = std::make_unique<rt::RsocketServer>(addr, FLAGS_port);
+    } else if (FLAGS_transport.find("capnproto") != std::string::npos) {
+        transport = std::make_unique<rt::CapnprotoServer>(addr, FLAGS_port);
 #endif /* ENABLE_FLATBUFFERS */
     } else {
         std::cerr << "Unknown transport: " << FLAGS_transport << std::endl;
