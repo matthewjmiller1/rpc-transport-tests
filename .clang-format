@@ -1,0 +1,14 @@
+---
+Language: Cpp
+BasedOnStyle: Google
+DerivePointerAlignment: false
+PointerAlignment: Right
+IndentWidth: 4
+AlwaysBreakAfterReturnType: AllDefinitions
+SortIncludes: false
+AccessModifierOffset: -4
+AlignTrailingComments: false
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterFunction: true
+...

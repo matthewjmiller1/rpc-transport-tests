@@ -24,8 +24,9 @@
 
 namespace ba = boost::accumulators;
 
-typedef ba::accumulator_set<double,
-        ba::stats<ba::tag::count, ba::tag::mean, ba::tag::variance> > StatSet;
+typedef ba::accumulator_set<
+    double, ba::stats<ba::tag::count, ba::tag::mean, ba::tag::variance> >
+    StatSet;
 
 DEFINE_string(address, "localhost", "address to connnect to");
 DEFINE_int32(port, 54321, "port to connect to");
@@ -46,18 +47,18 @@ struct ReplyValidator {
 };
 
 struct WriteReqPayloadCreator final : public PayloadCreator {
-    void fill(rt::MsgDataContainer &msgData, rt::Msg &msg,
-              int32_t blockSize, int32_t blockCount) const override;
+    void fill(rt::MsgDataContainer &msgData, rt::Msg &msg, int32_t blockSize,
+              int32_t blockCount) const override;
 };
 
 struct ReadReqPayloadCreator final : public PayloadCreator {
-    void fill(rt::MsgDataContainer &msgData, rt::Msg &msg,
-              int32_t blockSize, int32_t blockCount) const override;
+    void fill(rt::MsgDataContainer &msgData, rt::Msg &msg, int32_t blockSize,
+              int32_t blockCount) const override;
 };
 
 struct EchoReqPayloadCreator final : public PayloadCreator {
-    void fill(rt::MsgDataContainer &msgData, rt::Msg &msg,
-              int32_t blockSize, int32_t blockCount) const override;
+    void fill(rt::MsgDataContainer &msgData, rt::Msg &msg, int32_t blockSize,
+              int32_t blockCount) const override;
 };
 
 struct EchoReplyValidator final : public ReplyValidator {
@@ -65,9 +66,8 @@ struct EchoReplyValidator final : public ReplyValidator {
 };
 
 void
-WriteReqPayloadCreator::fill(rt::MsgDataContainer &msgData,
-                             rt::Msg &msg, int32_t blockSize,
-                             int32_t blockCount) const
+WriteReqPayloadCreator::fill(rt::MsgDataContainer &msgData, rt::Msg &msg,
+                             int32_t blockSize, int32_t blockCount) const
 {
     // The first buffer is the header
     for (auto i = 0; i < (blockCount + 1); ++i) {
@@ -89,9 +89,8 @@ WriteReqPayloadCreator::fill(rt::MsgDataContainer &msgData,
 }
 
 void
-ReadReqPayloadCreator::fill(rt::MsgDataContainer &msgData,
-                            rt::Msg &msg, int32_t blockSize,
-                            int32_t blockCount) const
+ReadReqPayloadCreator::fill(rt::MsgDataContainer &msgData, rt::Msg &msg,
+                            int32_t blockSize, int32_t blockCount) const
 {
     rpc_transports::Payload payload;
     auto hdr = payload.mutable_hdr()->mutable_r_req_hdr();
@@ -103,9 +102,8 @@ ReadReqPayloadCreator::fill(rt::MsgDataContainer &msgData,
 }
 
 void
-EchoReqPayloadCreator::fill(rt::MsgDataContainer &msgData,
-                            rt::Msg &msg, int32_t blockSize,
-                            int32_t blockCount) const
+EchoReqPayloadCreator::fill(rt::MsgDataContainer &msgData, rt::Msg &msg,
+                            int32_t blockSize, int32_t blockCount) const
 {
     // The first buffer is the header
     for (auto i = 0; i < (blockCount + 1); ++i) {
@@ -130,22 +128,22 @@ bool
 EchoReplyValidator::isValid(const rt::Msg &req, const rt::Msg &reply) const
 {
     if (req._bufs.size() != reply._bufs.size()) {
-        LOG(ERROR) << "req _bufs.size(" << req._bufs.size() <<
-            " != reply _bufs.size(" << reply._bufs.size() << ")";
+        LOG(ERROR) << "req _bufs.size(" << req._bufs.size()
+                   << " != reply _bufs.size(" << reply._bufs.size() << ")";
         return false;
     }
 
     // Skip the header, just validate the data
     for (auto i = 1U; i < req._bufs.size(); ++i) {
-        const auto rc = memcmp(req._bufs[i]._addr,
-                               reply._bufs[i]._addr,
-                               req._bufs[i]._len);
+        const auto rc =
+            memcmp(req._bufs[i]._addr, reply._bufs[i]._addr, req._bufs[i]._len);
         if (0 != rc) {
             const auto byteLen = std::min(100UL, req._bufs[i]._len);
-            VLOG(rt::ll::STRING_MEM) << "idx " << i << " req mem " <<
-                rt::DataBuf::bytesToHex(req._bufs[i]._addr, byteLen) <<
-                " reply mem " << 
-                rt::DataBuf::bytesToHex(reply._bufs[i]._addr, byteLen);
+            VLOG(rt::ll::STRING_MEM)
+                << "idx " << i << " req mem "
+                << rt::DataBuf::bytesToHex(req._bufs[i]._addr, byteLen)
+                << " reply mem "
+                << rt::DataBuf::bytesToHex(reply._bufs[i]._addr, byteLen);
             LOG(ERROR) << "echo data mismatch at index " << i;
             return false;
         }
@@ -163,7 +161,7 @@ getRemoteProcessTimeUs(const rt::Msg &reply)
         throw std::runtime_error("empty reply");
     }
 
-    std::string str(reinterpret_cast<char const*>(reply._bufs[0]._addr),
+    std::string str(reinterpret_cast<char const *>(reply._bufs[0]._addr),
                     reply._bufs[0]._len);
     rpc_transports::Payload payload;
     payload.ParseFromString(str);
@@ -175,11 +173,11 @@ getRemoteProcessTimeUs(const rt::Msg &reply)
     const auto hdr = payload.hdr();
 
     if (hdr.has_w_rsp_hdr()) {
-        retVal = hdr.w_rsp_hdr().msg_process_time_us(); 
+        retVal = hdr.w_rsp_hdr().msg_process_time_us();
     } else if (hdr.has_r_rsp_hdr()) {
-        retVal = hdr.r_rsp_hdr().msg_process_time_us(); 
+        retVal = hdr.r_rsp_hdr().msg_process_time_us();
     } else if (hdr.has_e_rsp_hdr()) {
-        retVal = hdr.e_rsp_hdr().msg_process_time_us(); 
+        retVal = hdr.e_rsp_hdr().msg_process_time_us();
     } else {
         throw std::runtime_error("unexpected header type");
     }
@@ -190,9 +188,9 @@ getRemoteProcessTimeUs(const rt::Msg &reply)
 void
 printStats(const std::string &label, const StatSet &stats)
 {
-    std::cout << label << ": avg=" << ba::mean(stats) <<
-        " dev=" << std::sqrt(ba::variance(stats)) <<
-        " count=" << ba::count(stats) <<  std::endl;
+    std::cout << label << ": avg=" << ba::mean(stats)
+              << " dev=" << std::sqrt(ba::variance(stats))
+              << " count=" << ba::count(stats) << std::endl;
 }
 
 int
@@ -214,17 +212,17 @@ main(int argc, char **argv)
         transport = std::make_unique<rt::NullClient>(FLAGS_address, FLAGS_port);
 #ifdef ENABLE_FLATBUFFERS
     } else if (FLAGS_transport.find("flatbuffers") != std::string::npos) {
-        transport = std::make_unique<rt::FlatbuffersClient>(FLAGS_address,
-                                                            FLAGS_port);
+        transport =
+            std::make_unique<rt::FlatbuffersClient>(FLAGS_address, FLAGS_port);
 #else /* !ENABLE_FLATBUFFERS */
     } else if (FLAGS_transport.find("grpc") != std::string::npos) {
         transport = std::make_unique<rt::GrpcClient>(FLAGS_address, FLAGS_port);
     } else if (FLAGS_transport.find("rsocket") != std::string::npos) {
-        transport = std::make_unique<rt::RsocketClient>(FLAGS_address,
-                                                        FLAGS_port);
+        transport =
+            std::make_unique<rt::RsocketClient>(FLAGS_address, FLAGS_port);
     } else if (FLAGS_transport.find("capnproto") != std::string::npos) {
-        transport = std::make_unique<rt::CapnprotoClient>(FLAGS_address,
-                                                        FLAGS_port);
+        transport =
+            std::make_unique<rt::CapnprotoClient>(FLAGS_address, FLAGS_port);
 #endif /* ENABLE_FLATBUFFERS */
     } else {
         std::cerr << "Unknown transport: " << FLAGS_transport << std::endl;
@@ -245,10 +243,10 @@ main(int argc, char **argv)
         return 1;
     }
 
-    std::cout << "Transport=" <<  FLAGS_transport << std::endl;
-    std::cout << "Sending " <<  FLAGS_op_count << " " << FLAGS_workload <<
-        " op(s), each for " << FLAGS_block_count << " blocks of size " <<
-        FLAGS_block_size << " bytes" << std::endl;
+    std::cout << "Transport=" << FLAGS_transport << std::endl;
+    std::cout << "Sending " << FLAGS_op_count << " " << FLAGS_workload
+              << " op(s), each for " << FLAGS_block_count << " blocks of size "
+              << FLAGS_block_size << " bytes" << std::endl;
 
     StatSet latAcc;
     StatSet tputAcc;
@@ -257,23 +255,23 @@ main(int argc, char **argv)
         rt::MsgDataContainer reqData, replyData;
         payloadCreator->fill(reqData, req, FLAGS_block_size, FLAGS_block_count);
         const auto start = std::chrono::steady_clock::now();
-        VLOG(rt::ll::STRING_MEM) << "mem[0] " <<
-            rt::DataBuf::bytesToHex(req._bufs[0]._addr, 1);
+        VLOG(rt::ll::STRING_MEM)
+            << "mem[0] " << rt::DataBuf::bytesToHex(req._bufs[0]._addr, 1);
         transport->sendReq(req, reply, replyData);
         const auto end = std::chrono::steady_clock::now();
         const auto payloadBytes = (FLAGS_block_size * FLAGS_block_count);
         std::chrono::duration<double> delta = (end - start);
         std::chrono::duration<double, std::milli> deltaMs = (end - start);
 
-        VLOG(rt::ll::LATENCY) << "Original deltaMs=" << deltaMs.count() <<
-            " delta=" << delta.count();
+        VLOG(rt::ll::LATENCY) << "Original deltaMs=" << deltaMs.count()
+                              << " delta=" << delta.count();
         const auto remoteTimeUs = getRemoteProcessTimeUs(reply);
         std::chrono::microseconds remoteTime(remoteTimeUs);
         VLOG(rt::ll::LATENCY) << "remoteTimeUsec: " << remoteTime.count();
         deltaMs -= remoteTime;
         delta -= remoteTime;
-        VLOG(rt::ll::LATENCY) << "Calculated deltaMs=" << deltaMs.count() <<
-            " delta=" << delta.count();
+        VLOG(rt::ll::LATENCY) << "Calculated deltaMs=" << deltaMs.count()
+                              << " delta=" << delta.count();
 
         latAcc(deltaMs.count());
         tputAcc((((8 * payloadBytes)) / delta.count()) / (1024 * 1024));

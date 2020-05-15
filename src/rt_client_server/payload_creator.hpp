@@ -8,13 +8,12 @@
 struct PayloadCreator {
     virtual ~PayloadCreator() = default;
 
-    virtual void fill(rt::MsgDataContainer &msgData,
-                      rt::Msg &msg, int32_t blockSize,
-                      int32_t blockCount) const = 0;
+    virtual void fill(rt::MsgDataContainer &msgData, rt::Msg &msg,
+                      int32_t blockSize, int32_t blockCount) const = 0;
 
     virtual void
-    fill(const rt::Msg &origMsg, rt::MsgDataContainer &msgData,
-         rt::Msg &msg, int32_t blockSize, int32_t blockCount) const
+    fill(const rt::Msg &origMsg, rt::MsgDataContainer &msgData, rt::Msg &msg,
+         int32_t blockSize, int32_t blockCount) const
     {
         fill(msgData, msg, blockSize, blockCount);
     }
@@ -34,14 +33,14 @@ struct PayloadCreator {
 
         if (VLOG_IS_ON(rt::ll::STRING_MEM)) {
             const auto byteLen = std::min(100UL, msg._bufs.back()._len);
-            VLOG(rt::ll::STRING_MEM) << "mem[0] " <<
-                rt::DataBuf::bytesToHex(msg._bufs.back()._addr, byteLen);
+            VLOG(rt::ll::STRING_MEM)
+                << "mem[0] "
+                << rt::DataBuf::bytesToHex(msg._bufs.back()._addr, byteLen);
             if (msg._bufs.back()._len < 100) {
-                VLOG(rt::ll::STRING_MEM) << "Serialized string: \"" <<
-                    payload.DebugString() << "\"";
-                VLOG(rt::ll::STRING_MEM) << 
-                    rt::DataBuf::bytesToHex((uint8_t *) msgData.back()->c_str(),
-                                            msgData.back()->size());
+                VLOG(rt::ll::STRING_MEM)
+                    << "Serialized string: \"" << payload.DebugString() << "\"";
+                VLOG(rt::ll::STRING_MEM) << rt::DataBuf::bytesToHex(
+                    (uint8_t *)msgData.back()->c_str(), msgData.back()->size());
             }
         }
     }

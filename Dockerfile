@@ -48,6 +48,8 @@ RUN apt-get update && \
     git-all \
     python3.8 \
     python3-pip \
+    clang-format \
+    clang-tidy \
     && rm -rf /var/lib/apt/lists/*
 
 SHELL ["/bin/bash", "-c"]

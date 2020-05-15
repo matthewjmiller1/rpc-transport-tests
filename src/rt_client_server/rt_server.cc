@@ -20,27 +20,29 @@ DEFINE_int32(port, 54321, "port to listen on");
 DEFINE_string(transport, "null", "transport to use");
 
 struct WriteRspPayloadCreator final : public PayloadCreator {
-    void fill(rt::MsgDataContainer &msgData, rt::Msg &msg,
-              int32_t blockSize, int32_t blockCount) const override;
+    void fill(rt::MsgDataContainer &msgData, rt::Msg &msg, int32_t blockSize,
+              int32_t blockCount) const override;
 };
 
 struct ReadRspPayloadCreator final : public PayloadCreator {
-    void fill(rt::MsgDataContainer &msgData, rt::Msg &msg,
-              int32_t blockSize, int32_t blockCount) const override;
+    void fill(rt::MsgDataContainer &msgData, rt::Msg &msg, int32_t blockSize,
+              int32_t blockCount) const override;
 };
 
 struct EchoRspPayloadCreator final : public PayloadCreator {
-    void fill(rt::MsgDataContainer &msgData, rt::Msg &msg,
-              int32_t blockSize, int32_t blockCount) const override {}
+    void
+    fill(rt::MsgDataContainer &msgData, rt::Msg &msg, int32_t blockSize,
+         int32_t blockCount) const override
+    {
+    }
     void fill(const rt::Msg &origMsg, rt::MsgDataContainer &msgData,
               rt::Msg &msg, int32_t blockSize,
               int32_t blockCount) const override;
 };
 
 void
-WriteRspPayloadCreator::fill(rt::MsgDataContainer &msgData,
-                             rt::Msg &msg, int32_t blockSize,
-                             int32_t blockCount) const
+WriteRspPayloadCreator::fill(rt::MsgDataContainer &msgData, rt::Msg &msg,
+                             int32_t blockSize, int32_t blockCount) const
 {
     rpc_transports::Payload payload;
     payload.mutable_hdr()->mutable_w_rsp_hdr();
@@ -48,9 +50,8 @@ WriteRspPayloadCreator::fill(rt::MsgDataContainer &msgData,
 }
 
 void
-ReadRspPayloadCreator::fill(rt::MsgDataContainer &msgData,
-                            rt::Msg &msg, int32_t blockSize,
-                            int32_t blockCount) const
+ReadRspPayloadCreator::fill(rt::MsgDataContainer &msgData, rt::Msg &msg,
+                            int32_t blockSize, int32_t blockCount) const
 {
     std::vector<std::unique_ptr<uint8_t[]>> randData;
     const auto bufLen = blockSize;
@@ -83,9 +84,8 @@ ReadRspPayloadCreator::fill(rt::MsgDataContainer &msgData,
 
 void
 EchoRspPayloadCreator::fill(const rt::Msg &origMsg,
-                            rt::MsgDataContainer &msgData,
-                            rt::Msg &msg, int32_t blockSize,
-                            int32_t blockCount) const
+                            rt::MsgDataContainer &msgData, rt::Msg &msg,
+                            int32_t blockSize, int32_t blockCount) const
 {
     std::vector<rpc_transports::Payload> echoData;
 
@@ -93,14 +93,13 @@ EchoRspPayloadCreator::fill(const rt::Msg &origMsg,
     const auto start = std::chrono::steady_clock::now();
     for (const auto &buf : origMsg._bufs) {
         rpc_transports::Payload payload;
-        std::string str(reinterpret_cast<char const*>(buf._addr), buf._len);
+        std::string str(reinterpret_cast<char const *>(buf._addr), buf._len);
         payload.ParseFromString(str);
         echoData.push_back(std::move(payload));
     }
     const auto end = std::chrono::steady_clock::now();
     const auto deltaUs =
         std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-
 
     // The first buffer is the header
     for (auto i = 0UL; i < (echoData.size()); ++i) {
@@ -117,10 +116,11 @@ EchoRspPayloadCreator::fill(const rt::Msg &origMsg,
 
         if (VLOG_IS_ON(rt::ll::STRING_MEM) && (i == 1)) {
             const auto byteLen = std::min(100UL, origMsg._bufs[i]._len);
-            VLOG(rt::ll::STRING_MEM) << "idx " << i << " req mem " <<
-                rt::DataBuf::bytesToHex(origMsg._bufs[i]._addr, byteLen) <<
-                " reply mem " << 
-                rt::DataBuf::bytesToHex(msg._bufs[i]._addr, byteLen);
+            VLOG(rt::ll::STRING_MEM)
+                << "idx " << i << " req mem "
+                << rt::DataBuf::bytesToHex(origMsg._bufs[i]._addr, byteLen)
+                << " reply mem "
+                << rt::DataBuf::bytesToHex(msg._bufs[i]._addr, byteLen);
         }
     }
 }
@@ -135,25 +135,25 @@ ServerRcvFn(const rt::Msg &req, rt::Msg &rsp, rt::MsgDataContainer &rspData)
         throw std::runtime_error("empty request");
     }
 
-    VLOG(rt::ll::STRING_MEM) << "parsing " <<
-        static_cast<const void*>(req._bufs[0]._addr) <<
-        " " << req._bufs[0]._len;
-    VLOG(rt::ll::STRING_MEM) << "mem[0] " <<
-        rt::DataBuf::bytesToHex(req._bufs[0]._addr, 1);
+    VLOG(rt::ll::STRING_MEM)
+        << "parsing " << static_cast<const void *>(req._bufs[0]._addr) << " "
+        << req._bufs[0]._len;
+    VLOG(rt::ll::STRING_MEM)
+        << "mem[0] " << rt::DataBuf::bytesToHex(req._bufs[0]._addr, 1);
 
-    std::string str(reinterpret_cast<char const*>(req._bufs[0]._addr),
+    std::string str(reinterpret_cast<char const *>(req._bufs[0]._addr),
                     req._bufs[0]._len);
     rpc_transports::Payload payload;
 
     if (VLOG_IS_ON(rt::ll::STRING_MEM) && (str.size() < 100)) {
-        VLOG(rt::ll::STRING_MEM) << 
-            rt::DataBuf::bytesToHex((uint8_t *) str.c_str(), str.size());
+        VLOG(rt::ll::STRING_MEM)
+            << rt::DataBuf::bytesToHex((uint8_t *)str.c_str(), str.size());
     }
 
     payload.ParseFromString(str);
 
-    VLOG(rt::ll::STRING_MEM) << "Parsed string: \"" <<
-        payload.DebugString() << "\"";
+    VLOG(rt::ll::STRING_MEM)
+        << "Parsed string: \"" << payload.DebugString() << "\"";
 
     if (!payload.has_hdr()) {
         throw std::runtime_error("no header");
@@ -186,7 +186,8 @@ ServerRcvFn(const rt::Msg &req, rt::Msg &rsp, rt::MsgDataContainer &rspData)
 }
 
 static void
-sigIntFn(int s){
+sigIntFn(int s)
+{
     google::FlushLogFiles(google::INFO);
     exit(1);
 }

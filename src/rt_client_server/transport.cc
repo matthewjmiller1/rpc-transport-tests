@@ -23,14 +23,16 @@ DataBuf::bytesToHex(const uint8_t *buf, size_t len)
     ss << "0x" << std::hex << std::setfill('0');
 
     for (auto i = 0U; i < len; ++i) {
-	ss << std::hex << std::setw(2) << static_cast<int>(buf[i]);
+        ss << std::hex << std::setw(2) << static_cast<int>(buf[i]);
     }
 
     return ss.str();
 }
 
-Server::Server(std::string address, uint16_t port) :
-    _address(address), _port(port) {}
+Server::Server(std::string address, uint16_t port)
+    : _address(address), _port(port)
+{
+}
 
 void
 Server::setRcvFn(RcvFn fn)
@@ -45,7 +47,9 @@ Server::getRcvFn()
     return _rcvFn;
 }
 
-Client::Client(std::string serverAddress, uint16_t serverPort) :
-    _serverAddress(serverAddress), _serverPort(serverPort) {}
-
+Client::Client(std::string serverAddress, uint16_t serverPort)
+    : _serverAddress(serverAddress), _serverPort(serverPort)
+{
 }
+
+}  // namespace rt
