@@ -3,16 +3,18 @@
 
 namespace rt {
 
-NullServer::NullServer(std::string address, uint16_t port) :
-    Server(address, port) {}
+NullServer::NullServer(std::string address, uint16_t port)
+    : Server(address, port)
+{
+}
 
 void
 NullServer::wait()
 {
 }
 
-NullClient::NullClient(std::string serverAddress, uint16_t serverPort) :
-    Client(serverAddress, serverPort)
+NullClient::NullClient(std::string serverAddress, uint16_t serverPort)
+    : Client(serverAddress, serverPort)
 {
 }
 
@@ -21,4 +23,4 @@ NullClient::sendReq(const Msg &request, Msg &reply, MsgDataContainer &replyData)
 {
 }
 
-}
+}  // namespace rt

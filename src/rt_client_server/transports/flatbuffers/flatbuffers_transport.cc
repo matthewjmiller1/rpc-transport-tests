@@ -12,11 +12,10 @@ struct FlatbuffersServer::impl final {
     std::unique_ptr<grpc::Server> _server;
 
 private:
-
-    struct ReqReplyServiceImpl final :
-        public fbs_transport::ReqReplyService::Service {
-
-        grpc::Status ReqReply(grpc::ServerContext *context,
+    struct ReqReplyServiceImpl final
+        : public fbs_transport::ReqReplyService::Service {
+        grpc::Status ReqReply(
+            grpc::ServerContext *context,
             grpc::ServerReaderWriter<
                 flatbuffers::grpc::Message<fbs_transport::Msg>,
                 flatbuffers::grpc::Message<fbs_transport::Msg>> *stream)
@@ -29,9 +28,9 @@ private:
 grpc::Status
 FlatbuffersServer::impl::ReqReplyServiceImpl::ReqReply(
     grpc::ServerContext *context,
-    grpc::ServerReaderWriter<
-        flatbuffers::grpc::Message<fbs_transport::Msg>,
-        flatbuffers::grpc::Message<fbs_transport::Msg>> *stream)
+    grpc::ServerReaderWriter<flatbuffers::grpc::Message<fbs_transport::Msg>,
+                             flatbuffers::grpc::Message<fbs_transport::Msg>>
+        *stream)
 {
     auto retVal = grpc::Status::OK;
     rt::Msg rcvMsg, sndMsg;
@@ -54,7 +53,7 @@ FlatbuffersServer::impl::ReqReplyServiceImpl::ReqReply(
 
     try {
         rcvFn(rcvMsg, sndMsg, rspData);
-    } catch (const std::exception& e) {
+    } catch (const std::exception &e) {
         std::cerr << "rcvFn exception: " << e.what() << std::endl;
         std::abort();
     }
@@ -81,8 +80,7 @@ FlatbuffersServer::impl::impl(std::string address, uint16_t port)
     const auto serverAddress = address + ":" + portStr;
     grpc::ServerBuilder builder;
 
-    builder.AddListeningPort(serverAddress,
-                             grpc::InsecureServerCredentials());
+    builder.AddListeningPort(serverAddress, grpc::InsecureServerCredentials());
 
     builder.RegisterService(&_service);
 
@@ -92,9 +90,10 @@ FlatbuffersServer::impl::impl(std::string address, uint16_t port)
     }
 }
 
-FlatbuffersServer::FlatbuffersServer(std::string address, uint16_t port) :
-    Server(address, port), _pImpl(std::make_unique<impl>(address, port))
-{}
+FlatbuffersServer::FlatbuffersServer(std::string address, uint16_t port)
+    : Server(address, port), _pImpl(std::make_unique<impl>(address, port))
+{
+}
 
 FlatbuffersServer::~FlatbuffersServer() = default;
 
@@ -110,7 +109,6 @@ struct FlatbuffersClient::impl final {
     std::shared_ptr<fbs_transport::ReqReplyService::Stub> _stub;
 
 private:
-
     std::shared_ptr<grpc::Channel> _channel;
 };
 
@@ -119,8 +117,8 @@ FlatbuffersClient::impl::impl(std::string serverAddress, uint16_t serverPort)
     const auto portStr = std::to_string(serverPort);
     const auto serverUri = serverAddress + ":" + portStr;
 
-    _channel = grpc::CreateChannel(serverUri,
-                                   grpc::InsecureChannelCredentials());
+    _channel =
+        grpc::CreateChannel(serverUri, grpc::InsecureChannelCredentials());
     if (nullptr == _channel) {
         throw std::runtime_error("channel was not created");
     }
@@ -132,10 +130,11 @@ FlatbuffersClient::impl::impl(std::string serverAddress, uint16_t serverPort)
 }
 
 FlatbuffersClient::FlatbuffersClient(std::string serverAddress,
-                                     uint16_t serverPort) :
-    Client(serverAddress, serverPort),
-    _pImpl(std::make_unique<impl>(serverAddress, serverPort))
-{}
+                                     uint16_t serverPort)
+    : Client(serverAddress, serverPort),
+      _pImpl(std::make_unique<impl>(serverAddress, serverPort))
+{
+}
 
 FlatbuffersClient::~FlatbuffersClient() = default;
 
@@ -148,10 +147,10 @@ FlatbuffersClient::sendReq(const Msg &request, Msg &reply,
     std::unique_ptr<grpc::ClientReaderWriter<
         flatbuffers::grpc::Message<fbs_transport::Msg>,
         flatbuffers::grpc::Message<fbs_transport::Msg>>>
-            stream(_pImpl->_stub->ReqReply(&context));
+        stream(_pImpl->_stub->ReqReply(&context));
 
-    const auto deadline = std::chrono::system_clock::now() +
-        std::chrono::milliseconds(10000);
+    const auto deadline =
+        std::chrono::system_clock::now() + std::chrono::milliseconds(10000);
     context.set_deadline(deadline);
 
     for (const auto &buf : request._bufs) {
@@ -181,9 +180,9 @@ FlatbuffersClient::sendReq(const Msg &request, Msg &reply,
     const auto status = stream->Finish();
     if (!status.ok()) {
         throw std::runtime_error("send failed: (" +
-                                 std::to_string(status.error_code()) +
-                                 ") " + status.error_message());
+                                 std::to_string(status.error_code()) + ") " +
+                                 status.error_message());
     }
 }
 
-}
+}  // namespace rt

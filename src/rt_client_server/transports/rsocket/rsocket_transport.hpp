@@ -13,7 +13,6 @@ struct RsocketServer final : public Server {
     void wait() override;
 
 private:
-
     struct Handler;
 
     std::unique_ptr<rsocket::RSocketServer> _server;
@@ -26,9 +25,8 @@ struct RsocketClient final : public Client {
                  MsgDataContainer &replyData) override;
 
 private:
-
     std::unique_ptr<rsocket::RSocketClient> _client;
     folly::ScopedEventBaseThread _workerThread;
 };
 
-}
+}  // namespace rt

@@ -17,4 +17,4 @@ struct NullClient final : public Client {
                  MsgDataContainer &replyData) override;
 };
 
-}
+}  // namespace rt

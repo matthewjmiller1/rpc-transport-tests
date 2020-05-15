@@ -18,7 +18,6 @@ struct FlatbuffersServer final : public Server {
     void wait() override;
 
 private:
-
     struct impl;
     std::unique_ptr<impl> _pImpl;
 };
@@ -31,9 +30,8 @@ struct FlatbuffersClient final : public Client {
                  MsgDataContainer &replyData) override;
 
 private:
-
     struct impl;
     std::unique_ptr<impl> _pImpl;
 };
 
-}
+}  // namespace rt

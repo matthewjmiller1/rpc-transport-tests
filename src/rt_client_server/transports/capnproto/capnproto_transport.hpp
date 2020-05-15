@@ -12,7 +12,6 @@ struct CapnprotoServer final : public Server {
     void wait() override;
 
 private:
-
     struct impl;
     std::unique_ptr<impl> _pImpl;
 };
@@ -25,9 +24,8 @@ struct CapnprotoClient final : public Client {
                  MsgDataContainer &replyData) override;
 
 private:
-
     struct impl;
     std::unique_ptr<impl> _pImpl;
 };
 
-}
+}  // namespace rt

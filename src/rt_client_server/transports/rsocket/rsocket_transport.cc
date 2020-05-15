@@ -16,15 +16,15 @@ namespace rt {
 typedef yarpl::flowable::Flowable<rsocket::Payload> FlowablePayload;
 
 struct RsocketServer::Handler : public rsocket::RSocketResponder {
-      std::shared_ptr<FlowablePayload>
-      handleRequestChannel(rsocket::Payload initialPayload,
-                           std::shared_ptr<FlowablePayload> request,
-                           rsocket::StreamId) override;
+    std::shared_ptr<FlowablePayload> handleRequestChannel(
+        rsocket::Payload initialPayload,
+        std::shared_ptr<FlowablePayload> request, rsocket::StreamId) override;
 };
 
 std::shared_ptr<FlowablePayload>
-RsocketServer::Handler::handleRequestChannel(rsocket::Payload initialPayload,
-    std::shared_ptr<FlowablePayload> request, rsocket::StreamId)
+RsocketServer::Handler::handleRequestChannel(
+    rsocket::Payload initialPayload, std::shared_ptr<FlowablePayload> request,
+    rsocket::StreamId)
 {
     rt::Msg rcvMsg, sndMsg;
     auto rcvFn = getRcvFn();
@@ -50,8 +50,8 @@ RsocketServer::Handler::handleRequestChannel(rsocket::Payload initialPayload,
         });
 
     request->subscribe(subscriber);
-    // Create the request message by mapping over the stream.
-    #if 0
+// Create the request message by mapping over the stream.
+#if 0
     request->map([&cnt, &rcvMsg, &reqData](rsocket::Payload p) {
         std::cout << "receiving " << cnt << std::endl;
         ++cnt;
@@ -66,30 +66,31 @@ RsocketServer::Handler::handleRequestChannel(rsocket::Payload initialPayload,
         rcvMsg._bufs.push_back(std::move(buf));
         return 0;
     });
-    #endif
+#endif
 
     VLOG(rt::ll::STRING_MEM) << "rcvMsg size: " << rcvMsg._bufs.size();
     // TODO: remove
-    std::cout << "rcvMsg size: " << rcvMsg._bufs.size() << " cnt: " <<
-        cnt << std::endl;
+    std::cout << "rcvMsg size: " << rcvMsg._bufs.size() << " cnt: " << cnt
+              << std::endl;
 
     try {
         rcvFn(rcvMsg, sndMsg, rspData);
-    } catch (const std::exception& e) {
+    } catch (const std::exception &e) {
         std::cerr << "rcvFn exception: " << e.what() << std::endl;
         std::abort();
     }
 
-    return yarpl::flowable::Flowable<>::range(0, sndMsg._bufs.size())->map(
-        [&sndMsg](int64_t idx) {
-        const auto &buf = sndMsg._bufs[idx];
-        // wrapBuffer() is zero copy (vs. copyBuffer())
-        return rsocket::Payload(folly::IOBuf::wrapBuffer(buf._addr, buf._len));
-    });
+    return yarpl::flowable::Flowable<>::range(0, sndMsg._bufs.size())
+        ->map([&sndMsg](int64_t idx) {
+            const auto &buf = sndMsg._bufs[idx];
+            // wrapBuffer() is zero copy (vs. copyBuffer())
+            return rsocket::Payload(
+                folly::IOBuf::wrapBuffer(buf._addr, buf._len));
+        });
 }
 
-RsocketServer::RsocketServer(std::string address, uint16_t port) :
-    Server(address, port)
+RsocketServer::RsocketServer(std::string address, uint16_t port)
+    : Server(address, port)
 {
     rsocket::TcpConnectionAcceptor::Options opts;
     opts.address = folly::SocketAddress(address.c_str(), port);
@@ -104,22 +105,22 @@ RsocketServer::RsocketServer(std::string address, uint16_t port) :
 void
 RsocketServer::wait()
 {
-    _server->startAndPark([](const rsocket::SetupParameters&) {
-                            return std::make_shared<Handler>();
-                          });
+    _server->startAndPark([](const rsocket::SetupParameters &) {
+        return std::make_shared<Handler>();
+    });
 }
 
-RsocketClient::RsocketClient(std::string serverAddress, uint16_t serverPort) :
-    Client(serverAddress, serverPort)
+RsocketClient::RsocketClient(std::string serverAddress, uint16_t serverPort)
+    : Client(serverAddress, serverPort)
 {
     folly::SocketAddress address;
 
     address.setFromHostPort(serverAddress, serverPort);
 
-    _client =
-        rsocket::RSocket::createConnectedClient(
-            std::make_unique<rsocket::TcpConnectionFactory>(
-            *_workerThread.getEventBase(), std::move(address))).get();
+    _client = rsocket::RSocket::createConnectedClient(
+                  std::make_unique<rsocket::TcpConnectionFactory>(
+                      *_workerThread.getEventBase(), std::move(address)))
+                  .get();
     if (nullptr == _client) {
         throw std::runtime_error("client was not created");
     }
@@ -129,16 +130,15 @@ void
 RsocketClient::sendReq(const Msg &request, Msg &reply,
                        MsgDataContainer &replyData)
 {
-    auto reqFlow =
-        yarpl::flowable::Flowable<>::range(0, request._bufs.size())->map(
-            [&request](int64_t idx) {
-            const auto &buf = request._bufs[idx];
-            // TODO: remove
-            std::cout << "sending " << idx << std::endl;
-            // wrapBuffer() is zero copy (vs. copyBuffer())
-            return rsocket::Payload(folly::IOBuf::wrapBuffer(buf._addr,
-                                                             buf._len));
-        });
+    auto reqFlow = yarpl::flowable::Flowable<>::range(0, request._bufs.size())
+                       ->map([&request](int64_t idx) {
+                           const auto &buf = request._bufs[idx];
+                           // TODO: remove
+                           std::cout << "sending " << idx << std::endl;
+                           // wrapBuffer() is zero copy (vs. copyBuffer())
+                           return rsocket::Payload(
+                               folly::IOBuf::wrapBuffer(buf._addr, buf._len));
+                       });
 
     auto requester = _client->getRequester();
     auto reqChannel = requester->requestChannel(reqFlow);
@@ -153,4 +153,4 @@ RsocketClient::sendReq(const Msg &request, Msg &reply,
     });
 }
 
-}
+}  // namespace rt

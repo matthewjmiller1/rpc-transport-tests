@@ -16,17 +16,14 @@ struct CapnprotoServer::impl final {
     std::unique_ptr<capnp::EzRpcServer> _server;
 
 private:
-
     struct ReqSvcImpl final : public StreamService::RequestCallback::Server {
-
         kj::Promise<void> sendChunk(SendChunkContext context) override;
         kj::Promise<void> done(DoneContext context) override;
 
     private:
-
         static kj::Promise<void> sendReplyStream(
-            StreamService::ReplyCallback::Client stream,
-            const rt::Msg &sndMsg, size_t bufIdx);
+            StreamService::ReplyCallback::Client stream, const rt::Msg &sndMsg,
+            size_t bufIdx);
 
         rt::Msg _rcvMsg;
         rt::Msg _sndMsg;
@@ -71,7 +68,7 @@ CapnprotoServer::impl::ReqSvcImpl::done(DoneContext context)
 
     try {
         rcvFn(_rcvMsg, _sndMsg, _rspData);
-    } catch (const std::exception& e) {
+    } catch (const std::exception &e) {
         std::cerr << "rcvFn exception: " << e.what() << std::endl;
         std::abort();
     }
@@ -81,8 +78,8 @@ CapnprotoServer::impl::ReqSvcImpl::done(DoneContext context)
 
 kj::Promise<void>
 CapnprotoServer::impl::ReqSvcImpl::sendReplyStream(
-    StreamService::ReplyCallback::Client stream,
-    const rt::Msg &sndMsg, size_t bufIdx)
+    StreamService::ReplyCallback::Client stream, const rt::Msg &sndMsg,
+    size_t bufIdx)
 {
     if (bufIdx == sndMsg._bufs.size()) {
         return stream.doneRequest().send().ignoreResult();
@@ -91,8 +88,8 @@ CapnprotoServer::impl::ReqSvcImpl::sendReplyStream(
     const auto &buf = sndMsg._bufs[bufIdx];
     auto chunkReq = stream.sendChunkRequest();
     chunkReq.setChunk(capnp::Data::Reader(buf._addr, buf._len));
-    return chunkReq.send().then([stream=kj::mv(stream),
-                                bufIdx, &sndMsg]() mutable {
+    return chunkReq.send().then(
+        [stream = kj::mv(stream), bufIdx, &sndMsg]() mutable {
             return sendReplyStream(kj::mv(stream), sndMsg, (bufIdx + 1));
         });
 }
@@ -104,17 +101,17 @@ CapnprotoServer::impl::impl(std::string address, uint16_t port)
         address = "*";
     }
     const auto serverAddress = address + ":" + std::to_string(port);
-    _server =
-        std::make_unique<capnp::EzRpcServer>(kj::heap<StreamServiceImpl>(),
-                                             serverAddress);
+    _server = std::make_unique<capnp::EzRpcServer>(
+        kj::heap<StreamServiceImpl>(), serverAddress);
     if (nullptr == _server) {
         throw std::runtime_error("server was not created");
     }
 }
 
-CapnprotoServer::CapnprotoServer(std::string address, uint16_t port) :
-    Server(address, port), _pImpl(std::make_unique<impl>(address, port))
-{}
+CapnprotoServer::CapnprotoServer(std::string address, uint16_t port)
+    : Server(address, port), _pImpl(std::make_unique<impl>(address, port))
+{
+}
 
 CapnprotoServer::~CapnprotoServer() = default;
 
@@ -132,22 +129,20 @@ struct CapnprotoClient::impl final {
     std::unique_ptr<StreamService::Client> _svc;
 
     static kj::Promise<void> sendRequestStream(
-        StreamService::RequestCallback::Client stream,
-        const rt::Msg &sndMsg, rt::Msg &reply, MsgDataContainer &replyData,
-        size_t bufIdx);
+        StreamService::RequestCallback::Client stream, const rt::Msg &sndMsg,
+        rt::Msg &reply, MsgDataContainer &replyData, size_t bufIdx);
 
 private:
-
     struct ReplySvcImpl final : public StreamService::ReplyCallback::Server {
-
-        explicit ReplySvcImpl(rt::Msg &reply, MsgDataContainer &replyData) :
-            _reply(reply), _replyData(replyData) {}
+        explicit ReplySvcImpl(rt::Msg &reply, MsgDataContainer &replyData)
+            : _reply(reply), _replyData(replyData)
+        {
+        }
 
         kj::Promise<void> sendChunk(SendChunkContext context) override;
         kj::Promise<void> done(DoneContext context) override;
 
     private:
-
         rt::Msg &_reply;
         rt::MsgDataContainer &_replyData;
     };
@@ -194,9 +189,8 @@ CapnprotoClient::impl::ReplySvcImpl::done(DoneContext context)
 
 kj::Promise<void>
 CapnprotoClient::impl::sendRequestStream(
-    StreamService::RequestCallback::Client stream,
-    const rt::Msg &sndMsg, rt::Msg &reply, MsgDataContainer &replyData,
-    size_t bufIdx)
+    StreamService::RequestCallback::Client stream, const rt::Msg &sndMsg,
+    rt::Msg &reply, MsgDataContainer &replyData, size_t bufIdx)
 {
     if (bufIdx == sndMsg._bufs.size()) {
         auto doneReq = stream.doneRequest();
@@ -207,18 +201,18 @@ CapnprotoClient::impl::sendRequestStream(
     const auto &buf = sndMsg._bufs[bufIdx];
     auto chunkReq = stream.sendChunkRequest();
     chunkReq.setChunk(capnp::Data::Reader(buf._addr, buf._len));
-    return chunkReq.send().then([stream=kj::mv(stream),
-                                bufIdx, &sndMsg, &reply, &replyData]() mutable {
-            return sendRequestStream(kj::mv(stream), sndMsg, reply,
-                                     replyData, (bufIdx + 1));
-        });
+    return chunkReq.send().then([stream = kj::mv(stream), bufIdx, &sndMsg,
+                                 &reply, &replyData]() mutable {
+        return sendRequestStream(kj::mv(stream), sndMsg, reply, replyData,
+                                 (bufIdx + 1));
+    });
 }
 
-CapnprotoClient::CapnprotoClient(std::string serverAddress,
-                                 uint16_t serverPort) :
-    Client(serverAddress, serverPort),
-    _pImpl(std::make_unique<impl>(serverAddress, serverPort))
-{}
+CapnprotoClient::CapnprotoClient(std::string serverAddress, uint16_t serverPort)
+    : Client(serverAddress, serverPort),
+      _pImpl(std::make_unique<impl>(serverAddress, serverPort))
+{
+}
 
 CapnprotoClient::~CapnprotoClient() = default;
 
@@ -229,9 +223,9 @@ CapnprotoClient::sendReq(const Msg &request, Msg &reply,
     auto &waitScope = _pImpl->_client->getWaitScope();
     auto req = _pImpl->_svc->reqReplyRequest();
     auto reqSvc = req.send().getReqSvc();
-    auto promise = impl::sendRequestStream(reqSvc, request, reply, replyData,
-                                           0);
+    auto promise =
+        impl::sendRequestStream(reqSvc, request, reply, replyData, 0);
     promise.wait(waitScope);
 }
 
-}
+}  // namespace rt

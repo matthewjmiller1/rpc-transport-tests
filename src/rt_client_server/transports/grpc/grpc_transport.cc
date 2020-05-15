@@ -17,20 +17,20 @@ struct GrpcServer::impl final {
     std::unique_ptr<grpc::Server> _server;
 
 private:
-
-    struct ReqReplyServiceImpl final :
-        public grpc_transport::ReqReplyService::Service {
-
-        grpc::Status ReqReply(grpc::ServerContext *context,
-            grpc::ServerReaderWriter<grpc_transport::Msg,
-                                     grpc_transport::Msg> *stream) override;
+    struct ReqReplyServiceImpl final
+        : public grpc_transport::ReqReplyService::Service {
+        grpc::Status ReqReply(
+            grpc::ServerContext *context,
+            grpc::ServerReaderWriter<grpc_transport::Msg, grpc_transport::Msg>
+                *stream) override;
     };
 
     ReqReplyServiceImpl _service;
 };
 
 grpc::Status
-GrpcServer::impl::ReqReplyServiceImpl::ReqReply(grpc::ServerContext *context,
+GrpcServer::impl::ReqReplyServiceImpl::ReqReply(
+    grpc::ServerContext *context,
     grpc::ServerReaderWriter<grpc_transport::Msg, grpc_transport::Msg> *stream)
 {
     auto retVal = grpc::Status::OK;
@@ -41,8 +41,8 @@ GrpcServer::impl::ReqReplyServiceImpl::ReqReply(grpc::ServerContext *context,
 
     while (stream->Read(&req)) {
         if (VLOG_IS_ON(rt::ll::STRING_MEM) && (req.data().size() < 100)) {
-            VLOG(rt::ll::STRING_MEM) << "Deserialized msg: \"" <<
-                req.DebugString();
+            VLOG(rt::ll::STRING_MEM)
+                << "Deserialized msg: \"" << req.DebugString();
         }
         auto str = req.release_data();
         reqData.push_back(std::unique_ptr<std::string>(str));
@@ -51,21 +51,20 @@ GrpcServer::impl::ReqReplyServiceImpl::ReqReply(grpc::ServerContext *context,
         buf._len = reqData.back()->size();
 
         if (VLOG_IS_ON(rt::ll::STRING_MEM) && (buf._len < 100)) {
-            VLOG(rt::ll::STRING_MEM) << "mem[0] " <<
-                rt::DataBuf::bytesToHex(buf._addr, 1);
-            VLOG(rt::ll::STRING_MEM) << "storing " <<
-                static_cast<const void*>(buf._addr) <<
-                " " << buf._len;
-            VLOG(rt::ll::STRING_MEM) << 
-                rt::DataBuf::bytesToHex((uint8_t *) reqData.back()->c_str(),
-                                        reqData.back()->size());
+            VLOG(rt::ll::STRING_MEM)
+                << "mem[0] " << rt::DataBuf::bytesToHex(buf._addr, 1);
+            VLOG(rt::ll::STRING_MEM)
+                << "storing " << static_cast<const void *>(buf._addr) << " "
+                << buf._len;
+            VLOG(rt::ll::STRING_MEM) << rt::DataBuf::bytesToHex(
+                (uint8_t *)reqData.back()->c_str(), reqData.back()->size());
         }
         rcvMsg._bufs.push_back(std::move(buf));
     }
 
     try {
         rcvFn(rcvMsg, sndMsg, rspData);
-    } catch (const std::exception& e) {
+    } catch (const std::exception &e) {
         std::cerr << "rcvFn exception: " << e.what() << std::endl;
         std::abort();
     }
@@ -91,8 +90,7 @@ GrpcServer::impl::impl(std::string address, uint16_t port)
     const auto serverAddress = address + ":" + portStr;
     grpc::ServerBuilder builder;
 
-    builder.AddListeningPort(serverAddress,
-                             grpc::InsecureServerCredentials());
+    builder.AddListeningPort(serverAddress, grpc::InsecureServerCredentials());
 
     builder.RegisterService(&_service);
 
@@ -102,9 +100,10 @@ GrpcServer::impl::impl(std::string address, uint16_t port)
     }
 }
 
-GrpcServer::GrpcServer(std::string address, uint16_t port) :
-    Server(address, port), _pImpl(std::make_unique<impl>(address, port))
-{}
+GrpcServer::GrpcServer(std::string address, uint16_t port)
+    : Server(address, port), _pImpl(std::make_unique<impl>(address, port))
+{
+}
 
 GrpcServer::~GrpcServer() = default;
 
@@ -120,7 +119,6 @@ struct GrpcClient::impl final {
     std::shared_ptr<grpc_transport::ReqReplyService::Stub> _stub;
 
 private:
-
     std::shared_ptr<grpc::Channel> _channel;
 };
 
@@ -129,8 +127,8 @@ GrpcClient::impl::impl(std::string serverAddress, uint16_t serverPort)
     const auto portStr = std::to_string(serverPort);
     const auto serverUri = serverAddress + ":" + portStr;
 
-    _channel = grpc::CreateChannel(serverUri,
-                                   grpc::InsecureChannelCredentials());
+    _channel =
+        grpc::CreateChannel(serverUri, grpc::InsecureChannelCredentials());
     if (nullptr == _channel) {
         throw std::runtime_error("channel was not created");
     }
@@ -141,10 +139,11 @@ GrpcClient::impl::impl(std::string serverAddress, uint16_t serverPort)
     }
 }
 
-GrpcClient::GrpcClient(std::string serverAddress, uint16_t serverPort) :
-    Client(serverAddress, serverPort),
-    _pImpl(std::make_unique<impl>(serverAddress, serverPort))
-{}
+GrpcClient::GrpcClient(std::string serverAddress, uint16_t serverPort)
+    : Client(serverAddress, serverPort),
+      _pImpl(std::make_unique<impl>(serverAddress, serverPort))
+{
+}
 
 GrpcClient::~GrpcClient() = default;
 
@@ -152,28 +151,28 @@ void
 GrpcClient::sendReq(const Msg &request, Msg &reply, MsgDataContainer &replyData)
 {
     grpc::ClientContext context;
-    std::unique_ptr<grpc::ClientReaderWriter<grpc_transport::Msg,
-        grpc_transport::Msg>> stream(_pImpl->_stub->ReqReply(&context));
+    std::unique_ptr<
+        grpc::ClientReaderWriter<grpc_transport::Msg, grpc_transport::Msg>>
+        stream(_pImpl->_stub->ReqReply(&context));
 
-    const auto deadline = std::chrono::system_clock::now() +
-        std::chrono::milliseconds(10000);
+    const auto deadline =
+        std::chrono::system_clock::now() + std::chrono::milliseconds(10000);
     context.set_deadline(deadline);
 
     for (const auto &buf : request._bufs) {
         grpc_transport::Msg msg;
 
-        VLOG(rt::ll::STRING_MEM) << "mem[0] " <<
-            rt::DataBuf::bytesToHex(buf._addr, 1);
+        VLOG(rt::ll::STRING_MEM)
+            << "mem[0] " << rt::DataBuf::bytesToHex(buf._addr, 1);
 
         // XXX: this makes a deep copy of the data.
         msg.set_data(buf._addr, buf._len);
 
         if (VLOG_IS_ON(rt::ll::STRING_MEM) && (buf._len < 100)) {
-            VLOG(rt::ll::STRING_MEM) << "Serialized msg: \"" <<
-                msg.DebugString() << "\"";
-            VLOG(rt::ll::STRING_MEM) << 
-                rt::DataBuf::bytesToHex((uint8_t *) msg.data().c_str(),
-                                        msg.data().size());
+            VLOG(rt::ll::STRING_MEM)
+                << "Serialized msg: \"" << msg.DebugString() << "\"";
+            VLOG(rt::ll::STRING_MEM) << rt::DataBuf::bytesToHex(
+                (uint8_t *)msg.data().c_str(), msg.data().size());
         }
         stream->Write(msg);
     }
@@ -193,9 +192,9 @@ GrpcClient::sendReq(const Msg &request, Msg &reply, MsgDataContainer &replyData)
     const auto status = stream->Finish();
     if (!status.ok()) {
         throw std::runtime_error("send failed: (" +
-                                 std::to_string(status.error_code()) +
-                                 ") " + status.error_message());
+                                 std::to_string(status.error_code()) + ") " +
+                                 status.error_message());
     }
 }
 
-}
+}  // namespace rt
